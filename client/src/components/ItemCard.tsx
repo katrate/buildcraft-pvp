@@ -1,4 +1,4 @@
-import type { GearDefinition, PowerDefinition } from '../../../shared/src/types';
+import type { GearDefinition, PotionDefinition, PowerDefinition } from '../../../shared/src/types';
 import { EFFECT_META } from '../../../shared/src/game-data/effects';
 import {
   Button,
@@ -24,13 +24,27 @@ const ICONS: Record<string, string> = {
   iron_sword: '🗡', light_blade: '⚔', war_hammer: '🔨',
   leather_armor: '🧥', light_armor: '🛡', heavy_armor: '🪖',
   energy_core: '🔋', speed_module: '🏃', life_amulet: '📿', reactive_shield: '🔰',
+  // potions
+  minor_healing_potion: '🧪', healing_potion: '🧪', greater_healing_potion: '🧴', elixir_of_life: '⚗️',
+  shield_potion: '🧿', rage_potion: '🌶️', stone_potion: '🪨', haste_potion: '💨',
 };
 
-export function itemIcon(item: PowerDefinition | GearDefinition): string {
+export function itemIcon(item: PowerDefinition | GearDefinition | PotionDefinition): string {
+  if (item.kind === 'potion') return ICONS[item.id] ?? '🧪';
   return ICONS[item.id] ?? (item.kind === 'power' ? '⚔' : '🎒');
 }
 
-export function itemStatsLine(item: PowerDefinition | GearDefinition): string {
+export function itemStatsLine(item: PowerDefinition | GearDefinition | PotionDefinition): string {
+  if (item.kind === 'potion') {
+    const parts: string[] = [];
+    if (item.healAmount) parts.push(`+${item.healAmount} HP`);
+    for (const e of item.effects ?? []) {
+      parts.push(`${EFFECT_META[e.kind].label} ${e.amount}${e.duration > 0 ? ` ×${e.duration} turns` : ''}`);
+    }
+    if (item.ultimateCharge) parts.push(`+${item.ultimateCharge} ult charge`);
+    parts.push(`${item.uses} use${item.uses === 1 ? '' : 's'} per match`);
+    return parts.join(' · ');
+  }
   if (item.kind === 'gear') {
     const parts = Object.entries(item.stats)
       .map(([k, v]) => `${v! > 0 ? '+' : ''}${v} ${k.replace('maxHp', 'HP').replace('maxEnergy', 'Energy')}`)
@@ -59,7 +73,7 @@ export function itemStatsLine(item: PowerDefinition | GearDefinition): string {
 }
 
 export function ItemCard(props: {
-  item: PowerDefinition | GearDefinition;
+  item: PowerDefinition | GearDefinition | PotionDefinition;
   actionLabel?: string;
   onAction?: () => void;
   actionDisabled?: boolean;
@@ -75,7 +89,7 @@ export function ItemCard(props: {
         <div>
           <ItemName>{item.name}</ItemName>
           <Tiny>
-            {item.kind === 'power' ? item.powerKind : item.slot} · {item.rarity}
+            {item.kind === 'power' ? item.powerKind : item.kind === 'gear' ? item.slot : 'potion'} · {item.rarity}
           </Tiny>
         </div>
       </ItemHead>

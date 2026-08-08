@@ -16,12 +16,15 @@ export type SlotId =
   | 'weapon'
   | 'armor'
   | 'utility'
-  | 'ultimate';
+  | 'ultimate'
+  | 'potion1'
+  | 'potion2'
+  | 'potion3';
 
 export interface SlotDef {
   id: SlotId;
   label: string;
-  accepts: 'power' | 'gear';
+  accepts: 'power' | 'gear' | 'potion';
   description: string;
 }
 
@@ -76,7 +79,25 @@ export interface GearDefinition {
   bonusAbilityUses?: number; // extra uses for every equipped active power
 }
 
-export type ItemDefinition = PowerDefinition | GearDefinition;
+// ------------------------------------------------------------
+// Potions — consumables carried in the build's potion bag.
+// Used during YOUR turn as a FREE action (max one potion per turn,
+// and only before you take your real action). They never end the turn.
+// ------------------------------------------------------------
+export interface PotionDefinition {
+  id: string;
+  name: string;
+  description: string;
+  kind: 'potion';
+  price: number;
+  rarity: Rarity;
+  uses: number; // how many times this potion can be drunk per match
+  healAmount?: number; // flat self-heal
+  effects?: EffectSpec[]; // applied to self when drunk (shield / buffs / regen)
+  ultimateCharge?: number; // ultimate charge granted when drunk
+}
+
+export type ItemDefinition = PowerDefinition | GearDefinition | PotionDefinition;
 
 // ------------------------------------------------------------
 // Effects / status framework (generic, data-driven)
@@ -140,6 +161,7 @@ export interface CombatBuild {
   ultimate: PowerDefinition | null;
   startingEffects: EffectSpec[];
   bonusAbilityUses: number; // gear bonus applied to every active power's per-match uses
+  potions: PotionDefinition[]; // the build's potion bag (consumed during turns)
 }
 
 export interface Combatant {
@@ -157,6 +179,8 @@ export interface Combatant {
   alive: boolean;
   kills: number;
   usesLeft: Record<string, number>; // powerId -> uses remaining this match
+  potionsLeft: Record<string, number>; // potionId -> uses remaining this match
+  potionUsedThisTurn: boolean; // max 1 free potion per turn, before acting
   effects: StatusInstance[];
   ultimate: { id: string; charge: number } | null;
   build: CombatBuild | null; // snapshot for UI (powers list)
@@ -215,6 +239,7 @@ export type MatchEvent =
 export type PlayerAction =
   | { type: 'USE_ABILITY'; powerId: string; targetId?: string }
   | { type: 'BASIC_ATTACK'; targetId: string }
+  | { type: 'USE_POTION'; potionId: string } // free action — does not end the turn (max 1 per turn)
   | { type: 'END_TURN' };
 
 // ------------------------------------------------------------
@@ -425,7 +450,7 @@ export interface PlayerState {
   level: number;
   xp: number; // xp accumulated toward next level
   coins: number;
-  inventory: { powers: string[]; gear: string[] };
+  inventory: { powers: string[]; gear: string[]; potions: string[] };
   presets: Preset[];
   activePresetId: string;
   record: PlayerRecord;

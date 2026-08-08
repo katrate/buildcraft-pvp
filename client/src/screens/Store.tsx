@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { usePlayer, buyItem, ownsItem } from '../state/store';
 import { getAllPowers } from '../../../shared/src/game-data/powers';
 import { getAllGear } from '../../../shared/src/game-data/gear';
+import { getAllPotions } from '../../../shared/src/game-data/potions';
 import type { PowerKind } from '../../../shared/src/types';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
 import { Chip, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Toast, Tiny } from '../ui/glass';
 
-type StoreTab = 'cores' | 'actives' | 'buffs' | 'ultimates' | 'gear';
+type StoreTab = 'cores' | 'actives' | 'buffs' | 'ultimates' | 'gear' | 'potions';
 
 const TABS: { id: StoreTab; label: string; icon: string }[] = [
   { id: 'cores', label: 'Cores', icon: '✦' },
@@ -15,6 +16,7 @@ const TABS: { id: StoreTab; label: string; icon: string }[] = [
   { id: 'buffs', label: 'Buffs', icon: '💚' },
   { id: 'ultimates', label: 'Ultimates', icon: '🌟' },
   { id: 'gear', label: 'Gear', icon: '🎒' },
+  { id: 'potions', label: 'Potions', icon: '🧪' },
 ];
 
 export function Store(props: { onBack: () => void }) {
@@ -28,23 +30,27 @@ export function Store(props: { onBack: () => void }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const kindFor: Record<StoreTab, PowerKind | 'gear'> = {
+  const kindFor: Record<StoreTab, PowerKind | 'gear' | 'potion'> = {
     cores: 'core',
     actives: 'active',
     buffs: 'passive',
     ultimates: 'ultimate',
     gear: 'gear',
+    potions: 'potion',
   };
 
   const allPowers = getAllPowers();
   const allGear = getAllGear();
+  const allPotions = getAllPotions();
   const items =
     tab === 'gear'
       ? allGear
-      : allPowers.filter((p) => p.powerKind === kindFor[tab]);
+      : tab === 'potions'
+        ? allPotions
+        : allPowers.filter((p) => p.powerKind === kindFor[tab]);
   items.sort((a, b) => a.price - b.price);
 
-  function tryBuy(kind: 'powers' | 'gear', id: string, price: number): void {
+  function tryBuy(kind: 'powers' | 'gear' | 'potions', id: string, price: number): void {
     if (ownsItem(kind, id)) {
       setToast('Already owned.');
       return;
@@ -80,7 +86,8 @@ export function Store(props: { onBack: () => void }) {
 
       <ItemGrid>
         {items.map((item) => {
-          const owned = ownsItem(item.kind === 'power' ? 'powers' : 'gear', item.id);
+          const kind = item.kind === 'power' ? 'powers' : item.kind === 'gear' ? 'gear' : 'potions';
+          const owned = ownsItem(kind, item.id);
           return (
             <ItemCard
               key={item.id}
@@ -88,7 +95,7 @@ export function Store(props: { onBack: () => void }) {
               badge={owned ? 'Owned' : undefined}
               actionLabel={owned ? 'Owned' : 'Buy'}
               actionDisabled={owned || player.coins < item.price}
-              onAction={() => tryBuy(item.kind === 'power' ? 'powers' : 'gear', item.id, item.price)}
+              onAction={() => tryBuy(kind, item.id, item.price)}
             />
           );
         })}

@@ -19,6 +19,7 @@ import { isRankedUnlocked, maxRankedUpgradeFor, rankForRating, rankStatusText } 
 import { tierForRating } from '../../../shared/src/rating';
 import { getPower } from '../../../shared/src/game-data/powers';
 import { getGear } from '../../../shared/src/game-data/gear';
+import { getPotion } from '../../../shared/src/game-data/potions';
 import { ItemPicker } from '../components/ItemPicker';
 import { StatBar } from '../components/StatBar';
 import { itemIcon } from '../components/ItemCard';
@@ -182,10 +183,17 @@ export function Build(props: { onBack: () => void }) {
                   : slot.accepts !== prev
                     ? slot.id === 'ultimate'
                       ? 'Ultimate'
-                      : 'Gear'
+                      : slot.accepts === 'potion'
+                        ? 'Potion Bag'
+                        : 'Gear'
                     : null;
               const itemId = preset.slots[slot.id] ?? null;
-              const item = slot.accepts === 'power' ? getPower(itemId) : getGear(itemId);
+              const item =
+                slot.accepts === 'power'
+                  ? getPower(itemId)
+                  : slot.accepts === 'gear'
+                    ? getGear(itemId)
+                    : getPotion(itemId);
               return (
                 <div key={slot.id} style={{ display: 'contents' }}>
                   {group && (
@@ -195,7 +203,13 @@ export function Build(props: { onBack: () => void }) {
                   )}
                   <SlotCard onClick={() => setPickingSlot(slot.id)}>
                     <ItemIcon size={36}>
-                      {item ? itemIcon(item) : slot.accepts === 'gear' ? '🎒' : '✦'}
+                      {item
+                        ? itemIcon(item)
+                        : slot.accepts === 'gear'
+                          ? '🎒'
+                          : slot.accepts === 'potion'
+                            ? '🧪'
+                            : '✦'}
                     </ItemIcon>
                     <Grow>
                       <SlotLabel>{slot.label}</SlotLabel>
@@ -225,7 +239,8 @@ export function Build(props: { onBack: () => void }) {
           </SlotGrid>
           <Tiny style={{ display: 'block', marginTop: 12 }}>
             Basic Attack is always available. Each ability has a fixed number of uses per match. Ultimates
-            charge +1 every round and +1 per kill (5 to fire).
+            charge +1 every round and +1 per kill (5 to fire). Potions are a free action — one per turn,
+            before you act.
           </Tiny>
         </Panel>
 

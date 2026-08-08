@@ -85,11 +85,15 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
           <Tiny style={{ letterSpacing: '0.1em' }}>
             LV {player.level} · RANKED {rankLine}
           </Tiny>
-          {!isRankedUnlocked(player.level) && (
-            <Button variant="ghost" size="sm" onClick={setDevUnlockRanked} title="Instantly reach the ranked-unlock threshold">
-              ⚡ Instantly Unlock Ranked (Level {RANKED_UNLOCK_LEVEL})
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={setDevUnlockRanked}
+            title="Dev tool — instantly reach the ranked-unlock threshold (never lowers your level)"
+          >
+            ⚡ Instantly Unlock Ranked
+            {!isRankedUnlocked(player.level) ? ` (Level ${RANKED_UNLOCK_LEVEL})` : ' ✓ unlocked'}
+          </Button>
         </div>
       </NavRail>
 

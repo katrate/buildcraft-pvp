@@ -6,6 +6,7 @@ import {
   STARTER,
 } from '../../../shared/src/constants';
 import { GEAR } from '../../../shared/src/game-data/gear';
+import { POTIONS } from '../../../shared/src/game-data/potions';
 import { POWERS } from '../../../shared/src/game-data/powers';
 import { addXp, applyRankDelta as applyRankDeltaPure, maxRankedUpgradeFor, rankForRating } from '../../../shared/src/progression';
 import { START_RATING } from '../../../shared/src/rating';
@@ -31,6 +32,7 @@ export function defaultState(): PlayerState {
     inventory: {
       powers: [...STARTER.ownedPowers],
       gear: [...STARTER.ownedGear],
+      potions: [...STARTER.ownedPotions],
     },
     presets: [
       {
@@ -62,6 +64,14 @@ function load(): PlayerState {
     const parsed = JSON.parse(raw) as PlayerState;
     if (!parsed.playerId || !parsed.presets || !parsed.inventory) return defaultState();
     const merged = { ...defaultState(), ...parsed };
+    // --- Migration: older saves predate the potion bag — always make sure the
+    // inventory carries the potions array (empty is fine; the Starter potion
+    // is only granted to brand-new accounts).
+    merged.inventory = {
+      powers: [...(parsed.inventory.powers ?? [])],
+      gear: [...(parsed.inventory.gear ?? [])],
+      potions: [...(parsed.inventory.potions ?? [])],
+    };
     // --- Migration: pre-format saves had a SINGLE `rank` + `rankedUpgrades`
     // (flat shapes). Their progress carries over to the 5v5 ladder (the format
     // that was live); the 1v1 ladder starts fresh at the base rating. Both are
@@ -171,8 +181,8 @@ export function recordMatch(result: 'victory' | 'defeat' | 'draw'): void {
   emit();
 }
 
-export function buyItem(kind: 'powers' | 'gear', id: string): boolean {
-  const def = kind === 'powers' ? POWERS[id] : GEAR[id];
+export function buyItem(kind: 'powers' | 'gear' | 'potions', id: string): boolean {
+  const def = kind === 'powers' ? POWERS[id] : kind === 'gear' ? GEAR[id] : POTIONS[id];
   if (!def) return false;
   if (state.coins < def.price) return false;
   if (state.inventory[kind].includes(id)) return false;
@@ -185,7 +195,7 @@ export function buyItem(kind: 'powers' | 'gear', id: string): boolean {
   return true;
 }
 
-export function ownsItem(kind: 'powers' | 'gear', id: string): boolean {
+export function ownsItem(kind: 'powers' | 'gear' | 'potions', id: string): boolean {
   return state.inventory[kind].includes(id);
 }
 
@@ -302,9 +312,10 @@ export function applyRankDelta(delta: number, format: RankedFormat): PlayerRank 
 }
 
 // Dev tool: jump straight to the ranked-unlock threshold (levels themselves
-// are endless — this only reaches the unlock, it is not a cap).
+// are endless — this only reaches the unlock, it is not a cap). Never lowers
+// an already-higher level, so it is safe to click at any time.
 export function setDevUnlockRanked(): void {
-  state = { ...state, level: RANKED_UNLOCK_LEVEL, xp: 0 };
+  state = { ...state, level: Math.max(state.level, RANKED_UNLOCK_LEVEL), xp: state.xp };
   emit();
 }
 

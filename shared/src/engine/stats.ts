@@ -1,6 +1,7 @@
 import { BASE_STATS, INITIATIVE_UPGRADE, RANKED_UPGRADE } from '../constants';
-import type { BuildStats, CombatBuild, CustomNorm, EffectSpec, MatchMode, PowerDefinition, Preset, RankedUpgrades, StatId } from '../types';
+import type { BuildStats, CombatBuild, CustomNorm, EffectSpec, MatchMode, PotionDefinition, PowerDefinition, Preset, RankedUpgrades, StatId } from '../types';
 import { getGear } from '../game-data/gear';
+import { getPotion } from '../game-data/potions';
 import { getPower } from '../game-data/powers';
 import { normalizeUnranked } from './normalize';
 import { RANKS, maxRankedUpgradeFor } from '../progression';
@@ -29,6 +30,7 @@ export function computeStats(preset: Preset): CombatBuild {
   const passives: PowerDefinition[] = [];
   let ultimate: PowerDefinition | null = null;
   let bonusAbilityUses = 0;
+  const potions: PotionDefinition[] = [];
 
   const applyStats = (add: Partial<BuildStats>) => {
     for (const [k, v] of Object.entries(add)) {
@@ -38,6 +40,14 @@ export function computeStats(preset: Preset): CombatBuild {
 
   for (const [slot, itemId] of Object.entries(preset.slots)) {
     if (!itemId) continue;
+    const potion = getPotion(itemId);
+    if (potion) {
+      // Potions only live in the potion slots (potion1-3) — unlike gear, any
+      // potion fits any potion slot.
+      if (!slot.startsWith('potion')) continue;
+      potions.push(potion);
+      continue;
+    }
     const gear = getGear(itemId);
     if (gear) {
       // Gear must live in its own slot type (weapon/armor/utility) — a sword
@@ -70,7 +80,7 @@ export function computeStats(preset: Preset): CombatBuild {
   stats.defense = Math.max(0, stats.defense);
   stats.initiative = Math.max(1, stats.initiative);
 
-  return { stats, actives, passives, core, ultimate, startingEffects, bonusAbilityUses };
+  return { stats, actives, passives, core, ultimate, startingEffects, bonusAbilityUses, potions };
 }
 
 // ------------------------------------------------------------

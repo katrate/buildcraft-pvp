@@ -1,8 +1,10 @@
-import type { Combatant, MatchState, PlayerAction, PowerDefinition } from '../types';
+import { ULTIMATE_CHARGE_MAX } from '../constants';
+import type { Combatant, MatchState, PlayerAction, PotionDefinition, PowerDefinition } from '../types';
 import {
   aliveAllies,
   aliveEnemies,
   getTurnActions,
+  getTurnPotions,
   isMyTurn,
 } from './combat';
 
@@ -28,6 +30,30 @@ export function chooseBotAction(state: MatchState, combatantId: string): PlayerA
   const lowHp = bot.hp <= bot.maxHp * 0.4;
   const actions = getTurnActions(state, combatantId);
   const usable = actions.filter((a) => a.usable);
+
+  // 0. Emergency potion — potions are FREE actions, so the bot drinks first
+  //    and its real action is chosen on the next driver step (still its turn).
+  if (lowHp || allies.some((a) => a.hp <= a.maxHp * 0.3)) {
+    const drinkable = getTurnPotions(state, combatantId).filter(
+      (p) =>
+        p.usable &&
+        (p.potion.healAmount !== undefined ||
+          p.potion.effects?.some((e) => e.kind === 'shield' || e.kind === 'regen')),
+    );
+    if (drinkable.length > 0) {
+      const best = drinkable.sort((a, b) => potionValue(b.potion) - potionValue(a.potion))[0];
+      return { type: 'USE_POTION', potionId: best.potion.id };
+    }
+  }
+
+  // 0b. Ultimate-charge potion — top the meter up when it is close to ready
+  //     (the free action is free, so it never costs the bot its real action).
+  if (bot.ultimate && bot.ultimate.charge >= 3 && bot.ultimate.charge < ULTIMATE_CHARGE_MAX) {
+    const energy = getTurnPotions(state, combatantId).filter(
+      (p) => p.usable && (p.potion.ultimateCharge ?? 0) > 0,
+    );
+    if (energy.length > 0) return { type: 'USE_POTION', potionId: energy[0].potion.id };
+  }
 
   // 1. Emergency self-defense
   if (lowHp) {
@@ -83,4 +109,12 @@ function usePower(power: PowerDefinition, targetId: string): PlayerAction {
 
 function powerValue(p: PowerDefinition): number {
   return (p.healAmount ?? 0) + (p.attack ?? 0) + (p.aiPriority ?? 0);
+}
+
+function potionValue(p: PotionDefinition): number {
+  let value = (p.healAmount ?? 0) + (p.ultimateCharge ?? 0) * 30;
+  for (const fx of p.effects ?? []) {
+    value += fx.amount * (fx.kind === 'regen' ? 2 : 1);
+  }
+  return value;
 }

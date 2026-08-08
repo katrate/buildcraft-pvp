@@ -14,5 +14,6 @@ export * from './rating';
 export * from './rewards';
 export * from './game-data/powers';
 export * from './game-data/gear';
+export * from './game-data/potions';
 export * from './game-data/effects';
 export * from './game-data/npcs';

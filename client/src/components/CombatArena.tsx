@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { MatchState, PlayerAction, PowerDefinition } from '../../../shared/src/types';
-import { computeDamage, effectiveDefense, getTurnActions } from '../../../shared/src/engine/combat';
+import { computeDamage, effectiveDefense, getTurnActions, getTurnPotions } from '../../../shared/src/engine/combat';
 import { CombatCard } from './CombatCard';
 import {
   AbilityBar,
@@ -15,6 +15,8 @@ import {
   LogBox,
   LogLine,
   Muted,
+  PotionBar,
+  PotionButton,
   Row,
   TeamCol,
   TeamHead,
@@ -43,6 +45,10 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
 
   const actions = useMemo(
     () => (myCombatant ? getTurnActions(state, myCombatant.id) : []),
+    [state, myCombatantId, myCombatant?.id, state.round, state.phase],
+  );
+  const potions = useMemo(
+    () => (myCombatant ? getTurnPotions(state, myCombatant.id) : []),
     [state, myCombatantId, myCombatant?.id, state.round, state.phase],
   );
 
@@ -159,6 +165,33 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
           );
         })}
       </Battlefield>
+
+      {/* Potion bag — FREE actions: one per turn, only before you act */}
+      <PotionBar>
+        {potions.length > 0 ? (
+          potions.map(({ potion: p, usesLeft: left, usable }) => (
+            <PotionButton
+              key={p.id}
+              disabled={!myTurn || !!disabled || !usable}
+              title={`${p.description} · FREE action — one per turn, before you act`}
+              onClick={() => onAction({ type: 'USE_POTION', potionId: p.id })}
+            >
+              <AbName>🧪 {p.name}</AbName>
+              <AbMeta>
+                {usable
+                  ? `${left} use${left === 1 ? '' : 's'} left · free action`
+                  : left <= 0
+                    ? 'Out of potions'
+                    : 'Potion used this turn'}
+              </AbMeta>
+            </PotionButton>
+          ))
+        ) : myCombatant ? (
+          <Tiny style={{ padding: '10px 0' }}>
+            No potions in your bag — equip them in the Build Editor (free action, once per turn).
+          </Tiny>
+        ) : null}
+      </PotionBar>
 
       <AbilityBar>
         {myCombatant && (

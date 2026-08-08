@@ -13,6 +13,7 @@ import type {
   MatchMode,
   MatchState,
   PlayerAction,
+  PotionDefinition,
   PowerDefinition,
   TargetRule,
 } from '../types';
@@ -52,6 +53,10 @@ export function makeCombatant(input: CombatantInput): Combatant {
   for (const p of input.build.actives) {
     usesLeft[p.id] = maxUsesFor(p, input.build);
   }
+  const potionsLeft: Record<string, number> = {};
+  for (const p of input.build.potions) {
+    potionsLeft[p.id] = p.uses;
+  }
   return {
     id: input.id,
     playerId: input.playerId,
@@ -67,6 +72,8 @@ export function makeCombatant(input: CombatantInput): Combatant {
     alive: true,
     kills: 0,
     usesLeft,
+    potionsLeft,
+    potionUsedThisTurn: false,
     effects: [],
     ultimate: input.build.ultimate ? { id: input.build.ultimate.id, charge: 0 } : null,
     build: input.build,
@@ -348,6 +355,9 @@ function beginTurn(state: MatchState): MatchState {
     }
     state.phase = 'TURN_START';
     state.currentCombatantId = cid;
+    // A fresh turn re-opens the potion window: max one free potion per turn,
+    // and only before your real action.
+    c.potionUsedThisTurn = false;
     log(state, `▶ ${c.name}'s turn.`);
     return state;
   }
@@ -374,6 +384,17 @@ export function applyAction(state: MatchState, action: PlayerAction): MatchState
   const actor = getCurrentCombatant(state);
   if (!actor || !actor.alive) return state;
   if (state.phase !== 'TURN_START' && state.phase !== 'PLAYER_ACTION') return state;
+
+  // Potions are FREE actions: they never end the turn, never consume an
+  // ability, and are only allowed BEFORE your real action (max one per turn).
+  // Returning with phase = TURN_START keeps the same combatant current, so
+  // the player (or bot driver) takes their real action next.
+  if (action.type === 'USE_POTION') {
+    usePotion(state, actor, action.potionId);
+    state.phase = 'TURN_START';
+    return state;
+  }
+
   state.phase = 'PLAYER_ACTION';
 
   let acted = true;
@@ -464,6 +485,42 @@ function useAbility(state: MatchState, actor: Combatant, powerId: string, target
   return true;
 }
 
+// Drink a potion from the bag. Free action — caller keeps the turn open.
+// Returns false (and consumes nothing) when the potion window is closed,
+// the potion is out of uses, or it is not in the build's bag.
+function usePotion(state: MatchState, actor: Combatant, potionId: string): boolean {
+  if (actor.potionUsedThisTurn) return false; // max one per turn
+  const potion = actor.build?.potions.find((p) => p.id === potionId);
+  if (!potion) return false;
+  const left = actor.potionsLeft[potionId] ?? 0;
+  if (left <= 0) return false;
+  actor.potionsLeft[potionId] = left - 1;
+  actor.potionUsedThisTurn = true;
+
+  if (potion.healAmount) {
+    const heal = Math.min(actor.maxHp - actor.hp, potion.healAmount);
+    actor.hp += heal;
+    log(state, `${actor.name} drinks ${potion.name} — recovers ${heal} HP.`);
+  }
+  if (potion.effects) {
+    for (const e of potion.effects) {
+      applyEffect(actor, e, actor.id);
+      log(state, `${actor.name} gains ${EFFECT_META[e.kind].label} from ${potion.name}.`);
+    }
+  }
+  if (potion.ultimateCharge && actor.ultimate) {
+    const before = actor.ultimate.charge;
+    actor.ultimate.charge = Math.min(ULTIMATE_CHARGE_MAX, actor.ultimate.charge + potion.ultimateCharge);
+    if (actor.ultimate.charge > before) {
+      log(state, `${actor.name} gains ${actor.ultimate.charge - before} ultimate charge (${actor.ultimate.charge}/${ULTIMATE_CHARGE_MAX}).`);
+    }
+  }
+  if (!potion.healAmount && !potion.effects && !potion.ultimateCharge) {
+    log(state, `${actor.name} drinks ${potion.name}.`);
+  }
+  return true;
+}
+
 // ------------------------------------------------------------
 // Match creation
 // ------------------------------------------------------------
@@ -507,6 +564,27 @@ export interface TurnActionInfo {
   usable: boolean;
   isUltimate: boolean;
   reason: string;
+}
+
+export interface PotionTurnInfo {
+  potion: PotionDefinition;
+  usesLeft: number;
+  usable: boolean;
+}
+
+// Potions currently drinkable: in the bag, with uses left, and the once-per-
+// turn potion window is still open (i.e. you haven't acted or drunk yet).
+export function getTurnPotions(state: MatchState, combatantId: string): PotionTurnInfo[] {
+  const c = state.combatants[combatantId];
+  if (!c || !c.build) return [];
+  return c.build.potions.map((p) => {
+    const usesLeft = c.potionsLeft[p.id] ?? 0;
+    return {
+      potion: p,
+      usesLeft,
+      usable: usesLeft > 0 && !c.potionUsedThisTurn,
+    };
+  });
 }
 
 export function getTurnActions(state: MatchState, combatantId: string): TurnActionInfo[] {

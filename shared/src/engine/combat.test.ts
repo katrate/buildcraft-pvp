@@ -345,6 +345,95 @@ describe('win conditions', () => {
   });
 });
 
+describe('potions — free actions, one per turn, before acting', () => {
+  function mkPotMatch(potions: Record<string, string | null> = {}): MatchState {
+    const a = {
+      id: 'p1', name: 'Player', playerId: 'u1', isBot: false,
+      build: computeStats(mkPreset({ active1: 'fire_bolt', weapon: 'iron_sword', ...potions })),
+    };
+    const b = {
+      id: 'p2', name: 'Enemy', playerId: 'u2', isBot: false,
+      build: computeStats(mkPreset({ active1: 'fire_bolt', weapon: 'iron_sword' })),
+    };
+    return createMatch({ id: 'm1', mode: 'unranked', teams: [{ teamId: 0, combatants: [a] }, { teamId: 1, combatants: [b] }] });
+  }
+
+  it('drinking a potion is a FREE action — the turn is not consumed', () => {
+    const s = mkPotMatch({ potion1: 'minor_healing_potion' });
+    expect(isMyTurn(s, 'p1')).toBe(true);
+    const before = s.combatants.p1.hp;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    expect(s.combatants.p1.potionUsedThisTurn).toBe(true);
+    expect(isMyTurn(s, 'p1')).toBe(true); // still p1's turn
+    expect(s.combatants.p1.hp).toBe(Math.min(s.combatants.p1.maxHp, before + 35));
+    expect(s.combatants.p1.potionsLeft.minor_healing_potion).toBe(2); // 3 uses -> 2
+  });
+
+  it('only ONE potion per turn', () => {
+    const s = mkPotMatch({ potion1: 'minor_healing_potion', potion2: 'shield_potion' });
+    s.combatants.p1.hp = 50;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    const shieldLeft = s.combatants.p1.potionsLeft.shield_potion;
+    applyAction(s, { type: 'USE_POTION', potionId: 'shield_potion' });
+    expect(s.combatants.p1.potionsLeft.shield_potion).toBe(shieldLeft); // NOT consumed
+    expect(s.combatants.p1.effects.some((e) => e.kind === 'shield')).toBe(false);
+    expect(isMyTurn(s, 'p1')).toBe(true); // turn still open
+  });
+
+  it('a potion with no uses left does nothing', () => {
+    const s = mkPotMatch({ potion1: 'minor_healing_potion' });
+    s.combatants.p1.potionsLeft = { minor_healing_potion: 0 };
+    const before = s.combatants.p1.hp;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    expect(s.combatants.p1.hp).toBe(before);
+    expect(s.combatants.p1.potionUsedThisTurn).toBe(false);
+  });
+
+  it('a potion not in the bag does nothing', () => {
+    const s = mkPotMatch({}); // no potions equipped
+    const before = s.combatants.p1.hp;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    expect(s.combatants.p1.hp).toBe(before);
+    expect(s.combatants.p1.potionUsedThisTurn).toBe(false);
+  });
+
+  it('the potion window re-opens at the start of your NEXT turn', () => {
+    const s = mkPotMatch({ potion1: 'minor_healing_potion' });
+    s.combatants.p1.hp = 100;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    expect(s.combatants.p1.potionUsedThisTurn).toBe(true);
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' }); // act -> p2's turn
+    applyAction(s, { type: 'END_TURN' }); // p2 ends -> round 2, p1 again
+    expect(isMyTurn(s, 'p1')).toBe(true);
+    expect(s.combatants.p1.potionUsedThisTurn).toBe(false); // reset
+    const hpBefore = s.combatants.p1.hp;
+    applyAction(s, { type: 'USE_POTION', potionId: 'minor_healing_potion' });
+    expect(s.combatants.p1.hp).toBeGreaterThan(hpBefore);
+  });
+
+  it('drinking a potion then acting in the same turn works', () => {
+    const s = mkPotMatch({ potion1: 'shield_potion' });
+    applyAction(s, { type: 'USE_POTION', potionId: 'shield_potion' });
+    expect(s.combatants.p1.effects.some((e) => e.kind === 'shield')).toBe(true);
+    const before = s.combatants.p2.hp;
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' });
+    expect(s.combatants.p2.hp).toBeLessThan(before);
+    expect(isMyTurn(s, 'p2')).toBe(true); // acted after the potion — turn moved on
+  });
+
+  it('an energy potion grants ultimate charge', () => {
+    const s = mkPotMatch({ potion1: 'energy_potion' });
+    s.combatants.p1.build = {
+      ...s.combatants.p1.build!,
+      actives: [],
+      ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', attack: 70, targetRule: 'all-enemies' },
+    };
+    s.combatants.p1.ultimate = { id: 'inferno', charge: 0 };
+    applyAction(s, { type: 'USE_POTION', potionId: 'energy_potion' });
+    expect(s.combatants.p1.ultimate?.charge).toBe(2);
+  });
+});
+
 describe('bot AI', () => {
   it('basic attacks the lowest-hp enemy when no abilities are usable', () => {
     const s = mkMatch();

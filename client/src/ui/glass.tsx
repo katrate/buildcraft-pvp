@@ -1316,6 +1316,39 @@ export const AbMeta = styled.span.withConfig(forwardFilter('ready'))<{ ready?: b
   ${(p) => p.ready && 'color: var(--epic);'}
 `;
 
+// Potion bag — free actions shown as a distinct green row above the abilities.
+export const PotionBar = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 10px 0 2px;
+  flex-wrap: wrap;
+  align-items: center;
+`;
+
+export const PotionButton = styled.button`
+  background: rgba(78, 205, 120, 0.08);
+  border: 1px solid rgba(78, 205, 120, 0.35);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 8px 12px;
+  min-width: 120px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  &:hover:not(:disabled) {
+    border-color: var(--good);
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+`;
+
 export const LogBox = styled.div`
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255,255,255,0.12);

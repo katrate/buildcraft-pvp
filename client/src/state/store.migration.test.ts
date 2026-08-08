@@ -51,6 +51,19 @@ describe('store migration → per-format ranked ladders', () => {
     // No undefined ladders anywhere — every format is addressable.
     expect(typeof s.ranks['1v1'].rating).toBe('number');
     expect(typeof s.ranks['5v5'].rating).toBe('number');
+    // Pre-potion saves get an empty potion bag (never the Starter grant).
+    expect(s.inventory.potions).toEqual([]);
+  });
+
+  it('keeps potions owned by newer saves and drops nothing', async () => {
+    stubStorage({
+      [KEY]: legacySave({ inventory: { powers: ['fire_bolt'], gear: ['iron_sword'], potions: ['shield_potion', 'rage_potion'] } }),
+    });
+    const store = await import('./store');
+    const s = store.getState();
+    expect(s.inventory.potions).toEqual(['shield_potion', 'rage_potion']);
+    expect(s.inventory.powers).toEqual(['fire_bolt']);
+    expect(s.inventory.gear).toEqual(['iron_sword']);
   });
 
   it('migrates the old tier/points ladder (pre-ELO) into the 5v5 rating', async () => {
@@ -106,5 +119,7 @@ describe('store migration → per-format ranked ladders', () => {
     expect(s.ranks['5v5']).toEqual({ rating: 850, games: 0 });
     expect(s.rankedUpgrades['1v1']).toEqual({ attack: 0, defense: 0 });
     expect(s.rankedUpgrades['5v5']).toEqual({ attack: 0, defense: 0 });
+    // Brand-new accounts start with the Starter potion in the bag.
+    expect(s.inventory.potions).toEqual(['minor_healing_potion']);
   });
 });

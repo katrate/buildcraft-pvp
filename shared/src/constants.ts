@@ -13,6 +13,9 @@ export const SLOTS: SlotDef[] = [
   { id: 'armor', label: 'Armor', accepts: 'gear', description: 'Defensive gear' },
   { id: 'utility', label: 'Utility', accepts: 'gear', description: 'Utility gear' },
   { id: 'ultimate', label: 'Ultimate', accepts: 'power', description: 'Charges up, then unleashes' },
+  { id: 'potion1', label: 'Potion 1', accepts: 'potion', description: 'Free use once per turn, before acting' },
+  { id: 'potion2', label: 'Potion 2', accepts: 'potion', description: 'Free use once per turn, before acting' },
+  { id: 'potion3', label: 'Potion 3', accepts: 'potion', description: 'Free use once per turn, before acting' },
 ];
 
 export const STAT_IDS: StatId[] = ['maxHp', 'attack', 'defense', 'initiative'];
@@ -136,6 +139,11 @@ export const STARTER = {
   coins: 1000,
   ownedPowers: ['fire_bolt'],
   ownedGear: ['iron_sword'],
+  ownedPotions: ['minor_healing_potion'],
   presetName: 'Starter',
-  presetSlots: { core: null, active1: 'fire_bolt', active2: null, passive1: null, passive2: null, weapon: 'iron_sword', armor: null, utility: null, ultimate: null },
+  presetSlots: {
+    core: null, active1: 'fire_bolt', active2: null, passive1: null, passive2: null,
+    weapon: 'iron_sword', armor: null, utility: null, ultimate: null,
+    potion1: 'minor_healing_potion', potion2: null, potion3: null,
+  },
 };

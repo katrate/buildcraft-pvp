@@ -1,4 +1,5 @@
 import { GEAR } from '../../shared/src/game-data/gear';
+import { POTIONS } from '../../shared/src/game-data/potions';
 import { POWERS } from '../../shared/src/game-data/powers';
 import { SLOTS } from '../../shared/src/constants';
 import type { Preset, SlotId } from '../../shared/src/types';
@@ -29,6 +30,10 @@ export function validatePreset(preset: Preset): ValidationResult {
       if (gear.slot !== slotDef.id) {
         return { valid: false, error: `"${gear.name}" is ${gear.slot} gear and cannot go in ${slotDef.label}.` };
       }
+    } else if (slotDef.accepts === 'potion') {
+      const potion = POTIONS[itemId];
+      if (!potion) return { valid: false, error: `Unknown potion "${itemId}" in ${slotDef.label}.` };
+      // Any potion fits any potion slot (potion1-3); slotDef is one by definition.
     } else {
       if (!power) return { valid: false, error: `Unknown power "${itemId}" in ${slotDef.label}.` };
       // Slot groups: core/actives/passives/ultimate
