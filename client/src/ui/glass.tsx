@@ -1137,14 +1137,18 @@ export const ArenaTop = styled.div`
   flex-wrap: wrap;
 `;
 
+// Face-to-face arena: the enemy faces you across the field — enemy team on
+// the far side (top), your team on the near side (bottom), VS between them.
+// Each side tilts toward the center so the two teams literally face each other.
 export const Battlefield = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
   flex: 1;
   min-height: 0;
-  align-items: center;
   position: relative;
+  perspective: 900px;
   &::before {
     content: 'VS';
     position: absolute;
@@ -1162,17 +1166,20 @@ export const Battlefield = styled.div`
   }
 `;
 
-export const TeamCol = styled.div`
+export const TeamCol = styled.div.withConfig(forwardFilter('facing'))<{ facing?: 'top' | 'bottom' }>`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   min-height: 0;
-  max-height: 100%;
+  flex: 1 1 0;
   padding: 2px;
+  // Far side (enemy) leans back, near side (yours) leans up — facing each other.
+  ${(p) => p.facing === 'top' && css`transform: perspective(700px) rotateX(11deg); transform-origin: top center;`}
+  ${(p) => p.facing === 'bottom' && css`transform: perspective(700px) rotateX(-11deg); transform-origin: bottom center;`}
 `;
 
-export const TeamHead = styled.div`
+export const TeamHead = styled.div.withConfig(forwardFilter('tone'))<{ tone?: 'enemy' | 'ally' }>`
   ${DISPLAY}
   font-size: 0.7rem;
   letter-spacing: 0.24em;
@@ -1180,6 +1187,8 @@ export const TeamHead = styled.div`
   text-align: center;
   font-weight: 600;
   padding: 2px 0 6px;
+  ${(p) => p.tone === 'enemy' && css`color: var(--bad);`}
+  ${(p) => p.tone === 'ally' && css`color: var(--accent-2);`}
 `;
 
 export const CombatantCard = styled.div.withConfig(forwardFilter('acting', 'dead', 'targetable', 'allyTarget'))<{ acting?: boolean; dead?: boolean; targetable?: boolean; allyTarget?: boolean }>`

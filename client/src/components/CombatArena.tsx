@@ -46,6 +46,10 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
     [state, myCombatantId, myCombatant?.id, state.round, state.phase],
   );
 
+  // Face-to-face: the enemy team is always the far side (top); my team is the
+  // near side (bottom). Single source of truth for "which team is mine".
+  const myTeamId = myCombatant?.teamId ?? 0;
+
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.logSeq]);
@@ -61,8 +65,10 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
           .map((c) => c.id),
       });
     }
-    return t;
-  }, [state.combatants, state.teamCount]);
+    // Face-to-face: enemy team(s) on the far side (top), your team on the
+    // near side (bottom). My team is always rendered last.
+    return [...t].sort((a, b) => (a.teamId === myTeamId ? 1 : 0) - (b.teamId === myTeamId ? 1 : 0));
+  }, [state.combatants, state.teamCount, myTeamId]);
 
   const current = state.currentCombatantId ? state.combatants[state.currentCombatantId] : null;
 
@@ -128,24 +134,30 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
       </ArenaTop>
 
       <Battlefield>
-        {teams.map((team) => (
-          <TeamCol key={team.teamId}>
-            <TeamHead>{team.teamId === 0 ? 'Your Team' : 'Enemy Team'}</TeamHead>
-            {team.members.map((cid) => {
-              const c = state.combatants[cid];
-              const targetMode = targetModeFor(team.teamId);
-              return (
-                <CombatCard
-                  key={cid}
-                  c={c}
-                  isActing={state.currentCombatantId === cid}
-                  targetMode={targetMode}
-                  onTarget={pickTarget}
-                />
-              );
-            })}
-          </TeamCol>
-        ))}
+        {teams.map((team) => {
+          const isMine = team.teamId === myTeamId;
+          return (
+            <TeamCol key={team.teamId} facing={isMine ? 'bottom' : 'top'}>
+              <TeamHead tone={isMine ? 'ally' : 'enemy'}>
+                {isMine ? 'YOUR TEAM' : 'ENEMY TEAM'}
+              </TeamHead>
+              {team.members.map((cid) => {
+                const c = state.combatants[cid];
+                const targetMode = targetModeFor(team.teamId);
+                return (
+                  <CombatCard
+                    key={cid}
+                    c={c}
+                    isAlly={isMine}
+                    isActing={state.currentCombatantId === cid}
+                    targetMode={targetMode}
+                    onTarget={pickTarget}
+                  />
+                );
+              })}
+            </TeamCol>
+          );
+        })}
       </Battlefield>
 
       <AbilityBar>

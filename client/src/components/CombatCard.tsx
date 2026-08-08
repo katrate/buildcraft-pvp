@@ -16,15 +16,17 @@ export function shapeVariant(c: Combatant): 'circle' | 'square' | 'triangle' | '
 
 export function CombatCard(props: {
   c: Combatant;
+  isAlly?: boolean;
   isActing?: boolean;
   targetMode?: 'enemy' | 'ally' | null;
   onTarget?: (id: string) => void;
 }) {
-  const { c, isActing, targetMode, onTarget } = props;
+  const { c, isAlly = false, isActing, targetMode, onTarget } = props;
   const dead = !c.alive;
   const shape = shapeVariant(c);
   const hpColor = c.hp / c.maxHp > 0.5 ? 'var(--good)' : c.hp / c.maxHp > 0.25 ? 'var(--warn)' : 'var(--bad)';
-  const teamColor = c.teamId === 0 ? '#2dd4ff' : '#ff4655';
+  // Face-to-face: allies are always cyan (near side), enemies always red (far side).
+  const teamColor = isAlly ? '#2dd4ff' : '#ff4655';
 
   const totalUsesLeft = Object.values(c.usesLeft).reduce((a, b) => a + b, 0);
   const totalUsesMax = (c.build?.actives ?? []).reduce((a, p) => a + maxUsesFor(p, c.build!), 0);
