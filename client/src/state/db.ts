@@ -103,14 +103,36 @@ export async function loadProfileRow(userId: string): Promise<ProfileRow | null>
   return (data as unknown as ProfileRow | null) ?? null;
 }
 
-/** Upsert the whole PlayerState row. Returns the row, or null when unconfigured. */
+/**
+ * Persist the whole PlayerState row. Returns the row, or null when unconfigured.
+ *
+ * UPDATE-first: the client only ever writes the row that the signup trigger
+ * already created, and the live RLS setup always ships a `profiles update own`
+ * policy. PostgREST `.upsert()` runs as INSERT ... ON CONFLICT DO UPDATE which
+ * ALSO needs an INSERT policy — if that policy hasn't been applied yet (or a
+ * user's row is missing for any reason), every save would die with a 42501 RLS
+ * error and progress would vanish on reload. Updating by primary key needs only
+ * the UPDATE policy, so it works today; the upsert stays as a fallback for the
+ * rare row-missing case (e.g. a broken signup trigger).
+ */
 export async function upsertProfile(state: PlayerState): Promise<ProfileRow | null> {
   const sb = getSupabase();
   if (!sb) return null;
-  const { data, error } = await sb.from('profiles').upsert(
-    { id: state.playerId, ...stateToProfile(state) },
-    { onConflict: 'id' },
-  );
+  const payload = { id: state.playerId, ...stateToProfile(state) };
+
+  // Fast path: UPDATE the existing row (RLS 'profiles update own').
+  const { data: upData, error: upErr } = await sb
+    .from('profiles')
+    .update(payload)
+    .eq('id', state.playerId)
+    .select();
+  const upRow = Array.isArray(upData) && upData.length > 0 ? upData[0] : null;
+  if (!upErr && upRow) {
+    return upRow as unknown as ProfileRow;
+  }
+
+  // Fallback: row missing (update matched nothing) — try an upsert to seed it.
+  const { data, error } = await sb.from('profiles').upsert(payload, { onConflict: 'id' });
   if (error) {
     console.warn('[db] upsertProfile failed:', error.message);
     return null;
