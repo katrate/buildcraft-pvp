@@ -3,3 +3,9 @@ dist/
 *.log
 .DS_Store
 server/data/
+
+# Local env files — never commit real keys (examples stay tracked)
+.env
+.env.*
+!.env.example
+client/.env
