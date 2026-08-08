@@ -78,15 +78,17 @@ export const RANKED_WINDOW_WIDEN_AFTER_MS = 60_000;
 // ------------------------------------------------------------
 export const RANKED_UNLOCK_LEVEL = 20;
 
+// Muted, eye-comfortable rank hues — desaturated so the ladder reads
+// clearly without neon glare.
 export const RANK_COLORS: Record<string, string> = {
-  iron: '#9aa0a6',
-  bronze: '#cd7f32',
-  silver: '#c0c0c0',
-  gold: '#ffd700',
-  platinum: '#7fd4e0',
-  diamond: '#b9f2ff',
-  divine: '#c084fc',
-  supreme: '#ff4655',
+  iron: '#8f959e',
+  bronze: '#b0784a',
+  silver: '#b3b8bf',
+  gold: '#c7a76d',
+  platinum: '#8fb6be',
+  diamond: '#a9c7d6',
+  divine: '#a294c4',
+  supreme: '#c2546a',
 };
 
 // ------------------------------------------------------------

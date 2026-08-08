@@ -41,22 +41,22 @@ export const DISPLAY = css`
 // ------------------------------------------------------------
 export const GlobalStyle = createGlobalStyle`
   :root {
-    --bg: #0a0c12;
-    --bg-soft: #10141d;
-    --panel: rgba(255,255,255,0.045);
-    --panel-2: rgba(255,255,255,0.09);
-    --border: rgba(255,255,255,0.14);
-    --text: #eef2f9;
-    --text-dim: #8d97ac;
-    --accent: #ff4655;
-    --accent-2: #2dd4ff;
-    --good: #45d483;
-    --bad: #ff6b81;
-    --warn: #ffd166;
-    --rare: #4d9fff;
-    --epic: #c06bff;
+    --bg: #12151c;
+    --bg-soft: #181c25;
+    --panel: rgba(255,255,255,0.03);
+    --panel-2: rgba(255,255,255,0.055);
+    --border: rgba(255,255,255,0.1);
+    --text: #e8ecf2;
+    --text-dim: #96a0b0;
+    --accent: #8294c9;
+    --accent-2: #6fa5ad;
+    --good: #82b39a;
+    --bad: #c78b95;
+    --warn: #c7a76d;
+    --rare: #79a3c6;
+    --epic: #a294c4;
     --radius: 10px;
-    --shadow: 0 10px 30px rgba(0,0,0,0.5);
+    --shadow: 0 8px 24px rgba(0,0,0,0.42);
   }
 
   * { box-sizing: border-box; }
@@ -89,7 +89,7 @@ export const GlobalStyle = createGlobalStyle`
     -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 100%);
   }
 
-  /* angled energy beams — red & cyan, like a loading screen */
+  /* soft ambient light — muted tones, easy on the eyes */
   body::after {
     content: '';
     position: fixed;
@@ -97,10 +97,10 @@ export const GlobalStyle = createGlobalStyle`
     z-index: -3;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 60% 42% at 82% -8%, rgba(255, 70, 85, 0.16), transparent 70%),
-      radial-gradient(ellipse 55% 40% at 6% 108%, rgba(45, 212, 255, 0.13), transparent 70%),
-      radial-gradient(ellipse 45% 36% at 60% 116%, rgba(192, 107, 255, 0.10), transparent 70%);
-    animation: beam-drift 18s ease-in-out infinite alternate;
+      radial-gradient(ellipse 60% 42% at 82% -8%, rgba(130, 148, 201, 0.06), transparent 70%),
+      radial-gradient(ellipse 55% 40% at 6% 108%, rgba(111, 165, 173, 0.05), transparent 70%),
+      radial-gradient(ellipse 45% 36% at 60% 116%, rgba(162, 148, 196, 0.04), transparent 70%);
+    animation: beam-drift 24s ease-in-out infinite alternate;
   }
   @keyframes beam-drift {
     from { transform: translate3d(0, 0, 0) scale(1); }
@@ -234,10 +234,10 @@ export const Kicker = styled.div`
 // Angular surfaces (clipped corners + drop shadow that follows shape)
 // ------------------------------------------------------------
 const angularSurface = css`
-  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.14);
+  background: linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012));
+  backdrop-filter: blur(16px) saturate(92%);
+  -webkit-backdrop-filter: blur(16px) saturate(92%);
+  border: 1px solid rgba(255,255,255,0.1);
 `;
 
 export const Panel = styled.div`
@@ -296,12 +296,12 @@ export const Button = styled.button.withConfig(forwardFilter('variant', 'size', 
     p.variant === 'primary' &&
     css`
       ${cutCorners(10)}
-      background: linear-gradient(120deg, #ff4655, #d92e3e);
-      border: 1px solid rgba(255, 70, 85, 0.7);
+      background: linear-gradient(120deg, #8294c9, #6779b5);
+      border: 1px solid rgba(130, 148, 201, 0.5);
       color: #fff;
-      filter: drop-shadow(0 6px 16px rgba(255, 70, 85, 0.28));
+      filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.3));
       &:hover:not(:disabled) {
-        filter: drop-shadow(0 8px 22px rgba(255, 70, 85, 0.45)) brightness(1.12);
+        filter: drop-shadow(0 5px 14px rgba(0, 0, 0, 0.4)) brightness(1.06);
         transform: translateY(-1px);
       }
     `}
@@ -375,7 +375,7 @@ export const Chip = styled.span.withConfig(forwardFilter('tone'))<{ tone?: ChipT
     css`color: var(--bad); border-color: rgba(255,107,129,0.4); background: rgba(255,107,129,0.08);`}
   ${(p) =>
     p.tone === 'epic' &&
-    css`color: var(--epic); border-color: rgba(192,107,255,0.45); background: rgba(192,107,255,0.08); box-shadow: 0 0 14px rgba(192,107,255,0.12);`}
+    css`color: var(--epic); border-color: rgba(162,148,196,0.4); background: rgba(162,148,196,0.06);`}
 `;
 
 // ------------------------------------------------------------
@@ -418,8 +418,8 @@ export const Fill = styled.div.withConfig(forwardFilter('pct', 'color'))<{ pct: 
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
-    animation: ${fillSheen} 2.2s ease-in-out infinite;
+    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.16) 50%, transparent 70%);
+    animation: ${fillSheen} 2.8s ease-in-out infinite;
   }
 `;
 
@@ -438,8 +438,8 @@ export const Input = styled.input`
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   &::placeholder { color: rgba(141, 151, 172, 0.55); }
   &:focus {
-    border-color: rgba(255, 70, 85, 0.75);
-    box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.16);
+    border-color: rgba(130, 148, 201, 0.6);
+    box-shadow: 0 0 0 3px rgba(130, 148, 201, 0.12);
   }
 `;
 
@@ -543,9 +543,9 @@ export const DevZone = styled.div`
 export const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 12, 0.8);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  background: rgba(8, 10, 15, 0.84);
+  backdrop-filter: blur(10px) saturate(92%);
+  -webkit-backdrop-filter: blur(10px) saturate(92%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -902,7 +902,7 @@ export const Logo = styled.div`
   color: #fff;
   text-align: center;
   line-height: 0.9;
-  filter: drop-shadow(0 0 22px rgba(255, 70, 85, 0.3));
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.35));
   span.red { color: var(--accent); }
   small {
     display: block;
@@ -924,10 +924,10 @@ export const TopBar = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 11px 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  background: rgba(8, 10, 16, 0.82);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(14, 17, 24, 0.85);
+  backdrop-filter: blur(16px) saturate(92%);
+  -webkit-backdrop-filter: blur(16px) saturate(92%);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -994,7 +994,7 @@ export const ItemCard = styled.div.withConfig(forwardFilter('rarity', 'clickable
   ${(p) => p.clickable && 'cursor: pointer;'}
   ${(p) =>
     p.selected &&
-    css`border-left-color: var(--accent); border-color: rgba(255,70,85,0.6); filter: drop-shadow(0 0 18px rgba(255,70,85,0.25));`}
+    css`border-left-color: var(--accent); border-color: rgba(130,148,201,0.45);`}
   &:hover {
     transform: translateY(-2px);
     border-left-color: var(--accent);
@@ -1107,8 +1107,8 @@ export const PresetTab = styled.button.withConfig(forwardFilter('active'))<{ act
   ${(p) =>
     p.active &&
     css`
-      border-color: rgba(255, 70, 85, 0.6);
-      background: linear-gradient(90deg, rgba(255,70,85,0.14), rgba(255,70,85,0.03));
+      border-color: rgba(130, 148, 201, 0.5);
+      background: linear-gradient(90deg, rgba(130,148,201,0.1), rgba(130,148,201,0.02));
       box-shadow: inset 3px 0 0 var(--accent);
     `}
   &:hover { border-color: var(--accent-2); }
@@ -1158,11 +1158,11 @@ export const Battlefield = styled.div`
     font-family: 'Rajdhani', sans-serif;
     font-size: 2.6rem;
     font-weight: 700;
-    color: rgba(255, 70, 85, 0.4);
+    color: rgba(130, 148, 201, 0.38);
     letter-spacing: 0.1em;
     z-index: 1;
     pointer-events: none;
-    text-shadow: 0 0 30px rgba(255, 70, 85, 0.5);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
   }
 `;
 
@@ -1203,10 +1203,10 @@ export const CombatantCard = styled.div.withConfig(forwardFilter('acting', 'dead
   filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.4));
   ${(p) =>
     p.acting &&
-    css`border-color: rgba(255,70,85,0.8); filter: drop-shadow(0 0 16px rgba(255,70,85,0.3)); box-shadow: inset 3px 0 0 var(--accent);`}
+    css`border-color: rgba(130,148,201,0.65); box-shadow: inset 3px 0 0 var(--accent);`}
   ${(p) => p.dead && 'opacity: 0.35; filter: grayscale(0.9);'}
   ${(p) => p.targetable && 'cursor: pointer;'}
-  ${(p) => p.targetable && css`&:hover { border-color: var(--bad); transform: translateY(-2px); filter: drop-shadow(0 0 14px rgba(255,107,129,0.35)); }`}
+  ${(p) => p.targetable && css`&:hover { border-color: var(--bad); transform: translateY(-2px); filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); }`}
   ${(p) => p.allyTarget && 'cursor: pointer;'}
   ${(p) => p.allyTarget && css`&:hover { border-color: var(--good); transform: translateY(-2px); }`}
 `;
@@ -1254,7 +1254,7 @@ export const FxBadge = styled.span.withConfig(forwardFilter('ready'))<{ ready?: 
   align-items: center;
   gap: 3px;
   color: var(--text-dim);
-  ${(p) => p.ready && css`color: var(--epic); border-color: rgba(192,107,255,0.55); box-shadow: 0 0 10px rgba(192,107,255,0.2);`}
+  ${(p) => p.ready && css`color: var(--epic); border-color: rgba(162,148,196,0.5);`}
 `;
 
 export const CbSide = styled.div`display: flex; flex-direction: column; gap: 4px; width: 110px; flex-shrink: 0;`;
@@ -1268,7 +1268,7 @@ export const Pip = styled.span.withConfig(forwardFilter('on'))<{ on?: boolean }>
   background: rgba(255,255,255,0.08);
   border: 1px solid rgba(255,255,255,0.16);
   transition: all 0.2s ease;
-  ${(p) => p.on && css`background: var(--epic); border-color: var(--epic); box-shadow: 0 0 8px rgba(192,107,255,0.9);`}
+  ${(p) => p.on && css`background: var(--epic); border-color: var(--epic); box-shadow: 0 0 5px rgba(162,148,196,0.5);`}
 `;
 
 // ------------------------------------------------------------
@@ -1296,8 +1296,8 @@ export const AbilityButton = styled.button.withConfig(forwardFilter('ultimate', 
   flex-direction: column;
   gap: 2px;
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-  ${(p) => p.ultimate && css`border-color: rgba(192,107,255,0.55); background: rgba(192,107,255,0.06);`}
-  ${(p) => p.selected && css`border-color: var(--accent); background: rgba(255,70,85,0.1); box-shadow: inset 3px 0 0 var(--accent);`}
+  ${(p) => p.ultimate && css`border-color: rgba(162,148,196,0.45); background: rgba(162,148,196,0.05);`}
+  ${(p) => p.selected && css`border-color: var(--accent); background: rgba(130,148,201,0.08); box-shadow: inset 3px 0 0 var(--accent);`}
   &:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
   &:disabled { opacity: 0.38; cursor: not-allowed; }
 `;
@@ -1365,7 +1365,7 @@ export const LogBox = styled.div`
 
 export const LogLine = styled.div.withConfig(forwardFilter('round', 'damage'))<{ round?: boolean; damage?: boolean }>`
   ${(p) => p.round && css`color: var(--accent-2); font-weight: 700;`}
-  ${(p) => p.damage && 'color: #ffd0d5;'}
+  ${(p) => p.damage && 'color: #d8b3b8;'}
 `;
 
 // ------------------------------------------------------------

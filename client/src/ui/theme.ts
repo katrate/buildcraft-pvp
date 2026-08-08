@@ -1,32 +1,33 @@
 // ============================================================
-// "STRIKE" design tokens for BuildCraft PvP — Valorant × Fortnite.
+// Design tokens for BuildCraft PvP — clean, calm, eye-comfortable.
 //
-// Dark tactical base, Valorant-red primary, electric cyan/purple
-// energy accents, angular clipped-corner shapes, condensed display
-// type. Legacy CSS variable NAMES are preserved (--accent, --good,
-// ...) so inline styles and prop-passed colors elsewhere keep working.
+// Dark slate base, muted periwinkle primary, soft teal secondary,
+// desaturated status colors, soft glass surfaces, gentle shadows.
+// No neon glows — legibility and comfort come first. Legacy CSS
+// variable NAMES are preserved (--accent, --good, ...) so inline
+// styles and prop-passed colors elsewhere keep working.
 // ============================================================
 
 export const glassTheme = {
   colors: {
-    bg: '#0a0c12',
-    bgSoft: '#10141d',
-    text: '#eef2f9',
-    textDim: '#8d97ac',
-    accent: '#ff4655', // Valorant red — primary CTA
-    accent2: '#2dd4ff', // electric cyan — energy secondary
-    good: '#45d483',
-    bad: '#ff6b81',
-    warn: '#ffd166',
-    rare: '#4d9fff',
-    epic: '#c06bff',
-    border: 'rgba(255, 255, 255, 0.14)',
-    borderSoft: 'rgba(255, 255, 255, 0.08)',
-    glass: 'rgba(255, 255, 255, 0.045)',
-    glassStrong: 'rgba(255, 255, 255, 0.09)',
-    panelInner: 'rgba(255, 255, 255, 0.03)',
-    track: 'rgba(0, 0, 0, 0.45)',
-    overlay: 'rgba(5, 7, 12, 0.82)',
+    bg: '#12151c',
+    bgSoft: '#181c25',
+    text: '#e8ecf2',
+    textDim: '#96a0b0',
+    accent: '#8294c9', // muted periwinkle — primary CTA
+    accent2: '#6fa5ad', // soft teal — secondary
+    good: '#82b39a', // sage
+    bad: '#c78b95', // muted rose
+    warn: '#c7a76d', // soft gold
+    rare: '#79a3c6', // steel blue
+    epic: '#a294c4', // dusty lavender
+    border: 'rgba(255, 255, 255, 0.1)',
+    borderSoft: 'rgba(255, 255, 255, 0.06)',
+    glass: 'rgba(255, 255, 255, 0.03)',
+    glassStrong: 'rgba(255, 255, 255, 0.055)',
+    panelInner: 'rgba(255, 255, 255, 0.02)',
+    track: 'rgba(0, 0, 0, 0.4)',
+    overlay: 'rgba(8, 10, 15, 0.84)',
   },
   radius: {
     sm: 6,
@@ -36,18 +37,18 @@ export const glassTheme = {
     pill: 999,
   },
   blur: {
-    glass: 'blur(18px) saturate(140%)',
+    glass: 'blur(16px) saturate(92%)',
     soft: 'blur(6px)',
   },
   shadow: {
-    card: '0 10px 30px rgba(0, 0, 0, 0.5)',
-    lift: '0 18px 44px rgba(0, 0, 0, 0.6)',
-    glow: '0 0 22px rgba(255, 70, 85, 0.35)',
-    glowCyan: '0 0 22px rgba(45, 212, 255, 0.35)',
-    glowGreen: '0 0 16px rgba(69, 212, 131, 0.35)',
-    glowPurple: '0 0 18px rgba(192, 107, 255, 0.4)',
+    card: '0 8px 24px rgba(0, 0, 0, 0.42)',
+    lift: '0 14px 34px rgba(0, 0, 0, 0.5)',
+    glow: '0 0 0 rgba(0, 0, 0, 0)', // reserved — glows are retired
+    glowCyan: '0 0 0 rgba(0, 0, 0, 0)',
+    glowGreen: '0 0 0 rgba(0, 0, 0, 0)',
+    glowPurple: '0 0 0 rgba(0, 0, 0, 0)',
   },
-  // Condensed, uppercase-heavy display face (Tungsten-ish) + techy body face
+  // Condensed display face + techy body face
   font: "'Chakra Petch', 'Segoe UI', system-ui, sans-serif",
   fontDisplay: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
   fontMono: 'Consolas, "SF Mono", monospace',
