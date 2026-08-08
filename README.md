@@ -2,7 +2,7 @@
 
 A browser-based **multiplayer turn-based PvP buildcraft game**. Players don't pick a
 character — they **build their own fighter** from powers, gear, passives, and ultimates,
-then test it in offline NPC waves and unranked 1v1 / 2v2 / 5v5 PvP.
+then test it in practice and unranked 1v1 / 2v2 / 5v5 PvP.
 
 > V1 philosophy: circles vs squares. Prove the **build → test → fight → earn → experiment**
 > loop is fun before any art.
@@ -28,7 +28,7 @@ npm run dev
 | Custom matches | Friend lobbies, 1v1→5v5 with **any uneven split** (2v5 allowed), no bots, fully normalized; the leader picks the norm level (standard or a rank budget) |
 | Initiative upgrade | Coin-bought in the Build editor, cost creeps per level; decides who acts first and is **not normalized** in unranked |
 | Unranked PvP | 1v1, 2v2, 5v5 via server matchmaking; teams fill with real players first, bots as a fallback; stats normalized (except initiative upgrade) |
-| Ranked PvP | Unlocks at Level 20: Bronze→Diamond ELO ladder, ranked-only coin stat upgrades capped by your rank, no bots in ranked |
+| Ranked PvP | Unlocks at Level 20: **5v5 only**, Bronze→Diamond ELO ladder, ranked-only coin stat upgrades capped by your rank, no bots — every slot is a real player within your rank window |
 | Party & friends | Friends list (add by online pilot name), parties of up to 5, ready-check before queueing, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
 | Progression | Endless XP curve — no level cap, XP requirements grow every level, coins, record |
 | Combat | Server-authoritative: initiative, rounds/turns, **per-match ability uses** (no energy), DoTs, shields, buffs/debuffs, stuns, counter/thorns, ultimates charging +1/round and +1/kill (5 to fire) |
@@ -110,10 +110,12 @@ npm run build        # production client build
   it). The leader can't start matchmaking until the whole party is ready — toggling
   unready while queued pulls the party out of the queue. Queue buttons show who's
   still not ready.
-- **Ranked:** every member must be within **±1 rank band of the party leader**
-  (rejected at queue time otherwise), and the enemy team is matched **around the
-  leader's rank** — the same window rules as solo ranked (including the 60s ±2
-  widening). Ranked is 1v1/2v2, so a party of 3+ cannot queue ranked.
+- **Ranked:** **5v5 only** (no 1v1/2v2). Every member must be within **±1 rank band
+  of the party leader** (rejected at queue time otherwise), and the enemy team is
+  matched **around the leader's rank** — the same window rules as solo ranked
+  (including the 60s ±2 widening). Parties up to 5 queue together; their empty
+  slots fill with real players (no bots in ranked), so a party of 3 queues 5v5
+  while a party of 6+ cannot queue ranked at all.
 - Leaving/kicking a party pulls the whole unit out of any queue.
 - **Match countdown:** once a match is formed (solo or party), the server announces
   `match_found` and starts the arena after **`MATCH_COUNTDOWN_MS` (5s)** — players
@@ -137,7 +139,7 @@ delta     = round(32 * (score - expected))   score: win 1, draw 0.5, loss 0
 
 - Equal ratings → win **+16** / loss **−16**. Beating a 400-point-stronger player →
   about **+29**; losing to them only costs about **−3**. Upsets pay; farming bots is
-  impossible (ranked has no bots). Team matches (2v2) use each team's average rating.
+  impossible (ranked has no bots). Team matches (5v5) use each team's average rating.
 - **Rank window cap:** ranked matchmaking only pairs players of the **same rank band or
   one band apart** (Bronze↔Silver↔Gold↔Platinum↔Diamond). A Gold player never faces a
   Bronze — incompatible players simply keep waiting until someone in range queues.

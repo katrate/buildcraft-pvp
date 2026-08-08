@@ -109,8 +109,8 @@ export function PartyPanel() {
           )}
           <Tiny>
             Queue buttons on the mode cards queue your <b>whole party</b> together once everyone is ready.
-            Ranked parties need everyone within ±1 rank of the leader; empty slots fill with{' '}
-            <b>real players</b> (bots only as a fallback).
+            Ranked is <b>5v5 with real players only</b> — everyone within ±1 rank of the leader, and parties
+            under 5 fill their empty slots with real players from the queue (no bots in ranked).
           </Tiny>
           <Row gap={8}>
             <Button variant="danger" onClick={leaveParty}>Leave Party</Button>

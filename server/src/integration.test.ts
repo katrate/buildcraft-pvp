@@ -287,38 +287,29 @@ describe('multiplayer integration', () => {
     b.close();
   });
 
-  it('runs a ranked 1v1, pays ranked rewards, and reports rank deltas', async () => {
+  it('runs a ranked 5v5, pays ranked rewards, and reports rank deltas', async () => {
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const alice = new TestClient(url, 'rank_a');
-    const bob = new TestClient(url, 'rank_b');
-    await Promise.all([alice.ready(), bob.ready()]);
+    const clients = Array.from({ length: 10 }, (_, i) => new TestClient(url, `rk5_${i}`));
+    await Promise.all(clients.map((c) => c.ready()));
 
-    alice.join(1, TEST_PRESET, { mode: 'ranked' });
-    bob.join(1, TEST_PRESET, { mode: 'ranked' });
+    for (const c of clients) c.join(5, TEST_PRESET, { mode: 'ranked' });
 
-    await Promise.all([
-      alice.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      bob.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-    ]);
-    expect(alice.match!.mode).toBe('ranked');
+    await Promise.all(clients.map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_start'), 20000)));
+    expect(clients[0].match!.mode).toBe('ranked');
+    // 10 real players, zero bots on the ranked board.
+    expect(Object.keys(clients[0].match!.combatants).length).toBe(10);
+    expect(Object.values(clients[0].match!.combatants).filter((c) => c.isBot).length).toBe(0);
 
-    await Promise.all([
-      alice.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
-      bob.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
-    ]);
-
-    const endA = alice.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
-    const endB = bob.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
-    expect(endA.rankDelta).toBeDefined();
-    expect(endB.rankDelta).toBeDefined();
-    if (endA.result === 'draw') {
-      expect(endA.rankDelta).toBe(0);
-      expect(endB.rankDelta).toBe(0);
-    } else {
-      // Equal ratings (both default 1000): ELO gives the winner +K/2, loser -K/2.
-      const winner = endA.result === 'victory' ? endA : endB;
-      const loser = endA.result === 'victory' ? endB : endA;
+    await Promise.all(clients.map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_end'), 90000)));
+    const ends = clients.map((c) => c.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!);
+    for (const e of ends) expect(e.rankDelta).toBeDefined();
+    if (ends.some((e) => e.result !== 'draw')) {
+      // Equal ratings (all default 1000): every player's delta is exactly ±16 (0 on a draw).
+      for (const e of ends) expect([-16, 0, 16]).toContain(e.rankDelta);
+      expect(ends.reduce((sum, e) => sum + (e.rankDelta ?? 0), 0)).toBe(0);
+      const winner = ends.find((e) => e.result === 'victory')!;
+      const loser = ends.find((e) => e.result === 'defeat')!;
       expect(winner.rankDelta).toBe(16);
       expect(loser.rankDelta).toBe(-16);
       // The winner also earned more coins/xp via the result base.
@@ -326,32 +317,28 @@ describe('multiplayer integration', () => {
       expect(winner.rewards.xp).toBeGreaterThan(loser.rewards.xp);
     }
     // ranked pays more than unranked
-    expect(endA.rewards.coins).toBeGreaterThanOrEqual(40);
-    alice.close();
-    bob.close();
-  }, 60000);
+    expect(ends[0].rewards.coins).toBeGreaterThanOrEqual(40);
+    for (const c of clients) c.close();
+  }, 120000);
 
   it('ranks an upset fairly: the underdog gains big, the favorite loses small', async () => {
-    // Ratings must stay within the ±1 rank window (1400 Gold vs 1200 Silver).
+    // Ratings must stay within the ±1 rank window (5 Gold at 1400 vs 5 Silver at 1200).
+    // Determinism: gold units queue FIRST, and partitionTeams is DFS "try team A
+    // first", so the 5 gold solos fill team A and the 5 silver solos team B —
+    // favs[0] and dogs[0] are therefore always on opposite teams.
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const favorite = new TestClient(url, 'fav');
-    const underdog = new TestClient(url, 'dog');
-    await Promise.all([favorite.ready(), underdog.ready()]);
-    favorite.join(1, TEST_PRESET, { mode: 'ranked', rating: 1400 });
-    underdog.join(1, TEST_PRESET, { mode: 'ranked', rating: 1200 });
-    await Promise.all([
-      favorite.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      underdog.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-    ]);
-    await Promise.all([
-      favorite.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
-      underdog.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
-    ]);
-    const endFav = favorite.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
-    const endDog = underdog.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    const favs = Array.from({ length: 5 }, (_, i) => new TestClient(url, `fav_${i}`));
+    const dogs = Array.from({ length: 5 }, (_, i) => new TestClient(url, `dog_${i}`));
+    await Promise.all([...favs, ...dogs].map((c) => c.ready()));
+    for (const c of favs) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1400 });
+    for (const c of dogs) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1200 });
+    await Promise.all([...favs, ...dogs].map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_start'), 20000)));
+    await Promise.all([...favs, ...dogs].map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_end'), 90000)));
+    const endFav = favs[0].messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    const endDog = dogs[0].messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
     if (endFav.result === 'victory' && endDog.result === 'defeat') {
-      // Favorite (1400) beat underdog (1200): expected ~0.76 -> gains ~8, dog loses ~8
+      // Favorite (1400 avg) beat underdog (1200 avg): expected ~0.76 -> gains ~8, dog loses ~8
       expect(endFav.rankDelta).toBeGreaterThanOrEqual(5);
       expect(endFav.rankDelta).toBeLessThanOrEqual(12);
       expect(endDog.rankDelta).toBeGreaterThanOrEqual(-12);
@@ -364,59 +351,47 @@ describe('multiplayer integration', () => {
       // Draw with unequal ratings: each side's delta is the other's negation.
       expect(endFav.rankDelta).toBe(-(endDog.rankDelta ?? 0));
     }
-    favorite.close();
-    underdog.close();
-  }, 60000);
+    for (const c of [...favs, ...dogs]) c.close();
+  }, 120000);
 
-  it('ranked matchmaking respects the ±1 rank window', async () => {
+  it('ranked matchmaking respects the ±1 rank window (5v5)', async () => {
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const gold = new TestClient(url, 'goldw'); // rating 1400 -> Gold (tier 2)
-    const bronze = new TestClient(url, 'bronz'); // rating 1000 -> Bronze (tier 0)
-    await Promise.all([gold.ready(), bronze.ready()]);
-    gold.join(1, TEST_PRESET, { mode: 'ranked', rating: 1400 });
-    bronze.join(1, TEST_PRESET, { mode: 'ranked', rating: 1000 });
-    // Two bands apart: they must NOT match, even well past the bot-fill window.
+    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw${i}`)); // rating 1400 -> Gold (tier 2)
+    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz${i}`)); // rating 1000 -> Bronze (tier 0)
+    await Promise.all([...golds, ...bronzes].map((c) => c.ready()));
+    for (const c of golds) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1400 });
+    for (const c of bronzes) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1000 });
+    // Two bands apart: they must NOT match — a 5v5 needs 10 players inside one ±1 window.
     await new Promise((r) => setTimeout(r, 2500));
-    expect(gold.messages.some((m) => m.type === 'match_start')).toBe(false);
-    expect(bronze.messages.some((m) => m.type === 'match_start')).toBe(false);
+    for (const c of [...golds, ...bronzes]) expect(c.messages.some((m) => m.type === 'match_start')).toBe(false);
 
-    // A Silver player (1200 -> tier 1) bridges the gap: the lower window
-    // (bronze+silver) wins the tie, so Silver pairs with Bronze and Gold waits.
-    const silver = new TestClient(url, 'silvr');
-    await silver.ready();
-    silver.join(1, TEST_PRESET, { mode: 'ranked', rating: 1200 });
-    await Promise.all([
-      bronze.waitFor((m) => m.some((x) => x.type === 'match_start'), 10000),
-      silver.waitFor((m) => m.some((x) => x.type === 'match_start'), 10000),
-    ]);
+    // 5 Silver players (1200 -> tier 1) bridge the gap: the lower window
+    // (bronze+silver) wins the tie, so Bronze+Silver match and Gold waits.
+    const silvers = Array.from({ length: 5 }, (_, i) => new TestClient(url, `silvr${i}`));
+    await Promise.all(silvers.map((c) => c.ready()));
+    for (const c of silvers) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1200 });
+    await Promise.all([...bronzes, ...silvers].map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000)));
     await new Promise((r) => setTimeout(r, 600));
-    expect(gold.messages.some((m) => m.type === 'match_start')).toBe(false); // gold still waits
-    bronze.close();
-    silver.close();
-    gold.close();
+    for (const c of golds) expect(c.messages.some((m) => m.type === 'match_start')).toBe(false); // gold still waits
+    for (const c of [...golds, ...bronzes, ...silvers]) c.close();
   }, 30000);
 
-  it('widens the rank window after a long wait so sparse ranks still match', async () => {
+  it('widens the rank window after a long wait so sparse ranks still match (5v5)', async () => {
     // Short widen threshold for the test (2.5s instead of 60s).
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, rankWidenAfterMs: 2500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const gold = new TestClient(url, 'goldw2'); // rating 1400 -> Gold (tier 2)
-    const bronze = new TestClient(url, 'bronz2'); // rating 1000 -> Bronze (tier 0)
-    await Promise.all([gold.ready(), bronze.ready()]);
-    gold.join(1, TEST_PRESET, { mode: 'ranked', rating: 1400 });
-    bronze.join(1, TEST_PRESET, { mode: 'ranked', rating: 1000 });
+    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw2_${i}`)); // rating 1400 -> Gold (tier 2)
+    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz2_${i}`)); // rating 1000 -> Bronze (tier 0)
+    await Promise.all([...golds, ...bronzes].map((c) => c.ready()));
+    for (const c of golds) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1400 });
+    for (const c of bronzes) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1000 });
     // Two bands apart: blocked at ±1 while the wait is short.
     await new Promise((r) => setTimeout(r, 1200));
-    expect(gold.messages.some((m) => m.type === 'match_start')).toBe(false);
-    expect(bronze.messages.some((m) => m.type === 'match_start')).toBe(false);
-    // Once the widen threshold passes, the ±2 window opens and they match.
-    await Promise.all([
-      gold.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      bronze.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-    ]);
-    gold.close();
-    bronze.close();
+    for (const c of [...golds, ...bronzes]) expect(c.messages.some((m) => m.type === 'match_start')).toBe(false);
+    // Once the widen threshold passes, the ±2 window opens and all 10 match.
+    await Promise.all([...golds, ...bronzes].map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000)));
+    for (const c of [...golds, ...bronzes]) c.close();
   }, 30000);
 
   it('queues a party of 2 for unranked 2v2 together on the same team', async () => {
@@ -515,7 +490,7 @@ describe('multiplayer integration', () => {
     member.acceptParty(partyId);
     await member.waitFor((m) => m.some((x) => x.type === 'party_update'));
 
-    leader.join(2, TEST_PRESET, { mode: 'ranked', partyId });
+    leader.join(5, TEST_PRESET, { mode: 'ranked', partyId });
     await leader.waitFor((m) => m.some((x) => x.type === 'error'));
     const err = leader.messages.find((m): m is Extract<ServerMessage, { type: 'error' }> => m.type === 'error');
     expect(err!.message).toContain('±1');
@@ -526,14 +501,13 @@ describe('multiplayer integration', () => {
     member.close();
   }, 30000);
 
-  it('queues a ranked 2v2 party and matches opponents around the leader rank', async () => {
+  it('queues a ranked 5v5 party and matches opponents around the leader rank', async () => {
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'plq');
     const member = new TestClient(url, 'pmq');
-    const opp1 = new TestClient(url, 'poq1');
-    const opp2 = new TestClient(url, 'poq2');
-    await Promise.all([leader.ready(), member.ready(), opp1.ready(), opp2.ready()]);
+    const solos = Array.from({ length: 8 }, (_, i) => new TestClient(url, `poq_${i}`));
+    await Promise.all([leader.ready(), member.ready(), ...solos.map((c) => c.ready())]);
     leader.hello();
     member.hello();
     leader.createParty();
@@ -544,27 +518,21 @@ describe('multiplayer integration', () => {
     member.acceptParty(partyId);
     await member.waitFor((m) => m.some((x) => x.type === 'party_update'));
 
-    leader.join(2, TEST_PRESET, { mode: 'ranked', partyId });
-    opp1.join(2, TEST_PRESET, { mode: 'ranked', rating: 1000 });
-    opp2.join(2, TEST_PRESET, { mode: 'ranked', rating: 1000 });
-    await Promise.all([
-      leader.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      member.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      opp1.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-      opp2.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
-    ]);
+    // Party of 2 queues ranked 5v5; 8 solos fill the remaining 8 slots (all real, no bots).
+    leader.join(5, TEST_PRESET, { mode: 'ranked', partyId });
+    for (const c of solos) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1000 });
+    await Promise.all([leader, member, ...solos].map((c) => c.waitFor((m) => m.some((x) => x.type === 'match_start'), 20000)));
     const ld = leader.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!;
     const md = member.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!;
-    const o1d = opp1.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!;
-    const o2d = opp2.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!;
     expect(ld.yourTeam).toBe(md.yourTeam); // party on one team
-    expect(o1d.yourTeam).toBe(o2d.yourTeam); // opponents on the other
-    expect(ld.yourTeam).not.toBe(o1d.yourTeam);
-    expect(Object.keys(leader.match!.combatants).filter((c) => !leader.match!.combatants[c].isBot).length).toBe(4);
-    leader.close();
-    member.close();
-    opp1.close();
-    opp2.close();
+    // Solos fill the party's empty slots on the same team, and form the enemy team.
+    const soloTeams = solos.map((c) => c.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!.yourTeam);
+    expect(soloTeams.some((t) => t === ld.yourTeam)).toBe(true);
+    expect(soloTeams.some((t) => t !== ld.yourTeam)).toBe(true);
+    // 10 real players, zero bots on the ranked board.
+    expect(Object.keys(leader.match!.combatants).length).toBe(10);
+    expect(Object.values(leader.match!.combatants).filter((c) => !c.isBot).length).toBe(10);
+    for (const c of [leader, member, ...solos]) c.close();
   }, 30000);
 
   it('keeps waiting for real players when someone new joins during the search window', async () => {

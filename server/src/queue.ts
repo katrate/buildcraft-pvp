@@ -165,7 +165,7 @@ export interface RankedUnitInput {
 
 export function findRankedPartyGroup(
   inputs: RankedUnitInput[],
-  teamSize: 1 | 2,
+  teamSize: 1 | 2 | 5,
   maxSpread = 1,
 ): { unitIndices: number[]; teamA: number[]; teamB: number[] } | null {
   const hasParties = inputs.some((u) => u.party);
@@ -198,7 +198,7 @@ export function findRankedPartyGroup(
 // Backward-compatible solo wrapper (all units of size 1).
 export function findRankedGroup(
   tiers: number[],
-  teamSize: 1 | 2,
+  teamSize: 1 | 2 | 5,
   maxSpread = 1,
 ): number[] | null {
   const inputs: RankedUnitInput[] = tiers.map((tier, i) => ({ id: `s${i}`, tier, size: 1, party: false }));
@@ -248,6 +248,9 @@ export class MatchmakingQueue {
     private botFillWaitMs = MATCHMAKING_BOT_FILL_WAIT_MS,
     private rankWidenAfterMs = RANKED_WINDOW_WIDEN_AFTER_MS,
   ) {
+    // Seed every mode×size queue. ranked:1 / ranked:2 are unreachable through
+    // join_queue (ranked is 5v5 only) but are still iterated by leave/leaveParty,
+    // so they are seeded empty rather than omitted.
     for (const mode of ['unranked', 'ranked'] as const) {
       for (const ts of [1, 2, 5] as const) {
         this.queues.set(queueKey(mode, ts), []);
@@ -333,7 +336,7 @@ export class MatchmakingQueue {
         const q = this.queues.get(key)!;
         if (q.length === 0) continue;
         if (mode === 'ranked') {
-          if (teamSize === 5) continue; // ranked is 1v1/2v2 only
+          if (teamSize !== 5) continue; // ranked is 5v5 only — no 1v1/2v2
           this.tryStartRanked(key, q, teamSize);
           continue;
         }
@@ -351,8 +354,8 @@ export class MatchmakingQueue {
   // Ranked: start a match only from players within one rank band of each
   // other (see findRankedPartyGroup). Once the longest-waiting player has
   // waited `rankWidenAfterMs`, the window widens to ±2 bands. Incompatible
-  // players simply keep waiting.
-  private tryStartRanked(key: QueueKey, q: QueuedPlayer[], teamSize: 1 | 2): void {
+  // players simply keep waiting. Ranked is 5v5 only — never bot-fills.
+  private tryStartRanked(key: QueueKey, q: QueuedPlayer[], teamSize: 1 | 2 | 5): void {
     const oldestJoinedAt = Math.min(...q.map((p) => p.joinedAt));
     const oldestWaitMs = Date.now() - oldestJoinedAt;
     const widened = oldestWaitMs >= this.rankWidenAfterMs;
@@ -374,7 +377,7 @@ export class MatchmakingQueue {
       for (const p of u.players) this.removePlayer(q, p);
     }
     const [mode, tsStr] = key.split(':') as [PvpMode, string];
-    const teamSizeKey = Number(tsStr) as 1 | 2;
+    const teamSizeKey = Number(tsStr) as 1 | 2 | 5;
     const lenA = teamAUnits.reduce((n, u) => n + u.players.length, 0);
     const teamIndices: number[][] = [
       Array.from({ length: lenA }, (_, i) => i),

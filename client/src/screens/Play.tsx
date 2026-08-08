@@ -112,6 +112,10 @@ export function Play(props: {
   const unreadyMembers = party ? party.members.filter((m) => !m.ready) : [];
   const allReady = unreadyMembers.length === 0;
   const unreadyNames = unreadyMembers.map((m) => m.name).join(', ');
+  // Ranked is 5v5 only — any party up to 5 fits (empty slots fill with real
+  // players), so only a party of 6+ is too big for ranked.
+  const rankedTooBig = inParty && partySize > 5;
+  const rankedNotReady = inParty && !allReady;
 
   // Queue status block shown inside the mode card the player queued in.
   function queueStatus(mode: PvpMode) {
@@ -223,45 +227,36 @@ export function Play(props: {
             <>
               <ModeDesc>
                 <span style={{ color: ranked.color, fontWeight: 700 }}>{ranked.name.toUpperCase()}</span> ·{' '}
-                {rankStatusText(player.rank)}. Win to gain RP, lose to drop. No bots — you face players
-                within ±1 rank, widening to ±2 after ~{Math.round(RANKED_WINDOW_WIDEN_AFTER_MS / 1000)}s of
-                waiting.
-                {inParty && leaderBand ? ` Ranked party rule: everyone within ±1 rank of the leader (${leaderBand.name}).` : ''}
+                {rankStatusText(player.rank)}. Ranked is <b>5v5 only</b> — real players only, no bots, so a
+                match needs <b>10 players</b> in your rank window. Win to gain RP, lose to drop. You face
+                players within ±1 rank, widening to ±2 after ~{Math.round(RANKED_WINDOW_WIDEN_AFTER_MS / 1000)}s
+                of waiting.
+                {inParty && leaderBand
+                  ? ` Ranked party rule: everyone within ±1 rank of the leader (${leaderBand.name}); parties under 5 fill their empty slots with real players.`
+                  : ''}
               </ModeDesc>
               {queueStatus('ranked') ?? (
-                <Row wrap>
-                  {([1, 2] as const).map((ts) => {
-                    const needsExact = inParty && partySize !== ts;
-                    const tooBig = inParty && partySize > 2;
-                    const notReady = inParty && !allReady;
-                    return (
-                      <Button
-                        key={ts}
-                        size="lg"
-                        variant="primary"
-                        disabled={status !== 'connected' || needsExact || tooBig || notReady || (inQueue && queue.mode !== 'ranked')}
-                        title={
-                          status !== 'connected'
-                            ? 'Server offline'
-                            : inQueue && queue.mode !== 'ranked'
-                              ? 'Already in the unranked queue — cancel first'
-                              : tooBig
-                                ? 'Ranked is 1v1 or 2v2 — a party of 3+ cannot queue ranked'
-                                : notReady
-                                  ? `Waiting for ${unreadyNames} to ready up…`
-                                  : needsExact
-                                    ? `Ranked needs the whole party in the match — party of ${partySize} queues ranked ${partySize}v${partySize}`
-                                    : inParty
-                                      ? `Queue your whole party (${partySize}) for ranked ${ts}v${ts}`
-                                      : `Join ranked ${ts}v${ts}`
-                        }
-                        onClick={() => joinQueue(ts, 'ranked')}
-                      >
-                        Ranked {ts}v{ts}
-                      </Button>
-                    );
-                  })}
-                </Row>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  disabled={status !== 'connected' || rankedTooBig || rankedNotReady || (inQueue && queue.mode !== 'ranked')}
+                  title={
+                    status !== 'connected'
+                      ? 'Server offline'
+                      : inQueue && queue.mode !== 'ranked'
+                        ? 'Already in the unranked queue — cancel first'
+                        : rankedTooBig
+                          ? 'Ranked is 5v5 — parties of 6+ cannot queue ranked'
+                          : rankedNotReady
+                            ? `Waiting for ${unreadyNames} to ready up…`
+                            : inParty
+                              ? `Queue your whole party (${partySize}) for ranked 5v5 — empty slots fill with real players`
+                              : 'Join ranked 5v5'
+                  }
+                  onClick={() => joinQueue(5, 'ranked')}
+                >
+                  Ranked 5v5
+                </Button>
               )}
             </>
           ) : (

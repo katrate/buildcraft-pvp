@@ -207,3 +207,56 @@ describe('party queue units', () => {
     expect(inA !== inB).toBe(true);
   });
 });
+
+describe('ranked 5v5 matching (ranked is 5v5 only)', () => {
+  const tiers = (ratings: number[]) => ratings.map((r) => tierForRating(r));
+
+  it('matches 10 same-band players into a full 5v5', () => {
+    const group = findRankedGroup(tiers(Array.from({ length: 10 }, () => 1000)), 5);
+    expect(group?.length).toBe(10);
+  });
+
+  it('needs 10 players — 9 cannot start a 5v5', () => {
+    expect(findRankedGroup(tiers(Array.from({ length: 9 }, () => 1000)), 5)).toBeNull();
+  });
+
+  it('still respects the rank window at 5v5 scale', () => {
+    // 5 bronze + 5 gold = two bands apart -> no 5v5 at ±1.
+    expect(findRankedGroup(tiers([...Array(5).fill(1000), ...Array(5).fill(1400)]), 5)).toBeNull();
+    // ±2 window lets them match.
+    expect(findRankedGroup(tiers([...Array(5).fill(1000), ...Array(5).fill(1400)]), 5, 2)?.length).toBe(10);
+  });
+
+  it('two full parties of 5 can face each other in ranked 5v5', () => {
+    const res = findRankedPartyGroup(
+      [
+        { id: 'pA', tier: 0, size: 5, party: true },
+        { id: 'pB', tier: 1, size: 5, party: true },
+      ],
+      5,
+      1,
+    );
+    expect(res).not.toBeNull();
+    const inA = res!.teamA.includes(0);
+    const inB = res!.teamB.includes(0);
+    expect(inA !== inB).toBe(true);
+  });
+
+  it('a party of 2 queues 5v5 and its empty slots fill with real solos', () => {
+    const res = findRankedPartyGroup(
+      [
+        { id: 'p', tier: 0, size: 2, party: true },
+        ...Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, tier: 0, size: 1, party: false })),
+      ],
+      5,
+      1,
+    );
+    expect(res).not.toBeNull();
+    const inA = res!.teamA.includes(0);
+    const inB = res!.teamB.includes(0);
+    expect(inA !== inB).toBe(true); // the party stays whole
+    // teamA = party(2) + 3 solos (4 units = 5 players), teamB = 5 solos (5 units = 5 players).
+    expect(res!.teamA.length).toBe(4);
+    expect(res!.teamB.length).toBe(5);
+  });
+});

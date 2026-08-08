@@ -309,9 +309,10 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
             send({ type: 'error', message: 'Invalid match mode.' });
             return;
           }
-          // Ranked is competitive: only 1v1 / 2v2, and it never fills with bots.
-          if (mode === 'ranked' && req.teamSize === 5) {
-            send({ type: 'error', message: 'Ranked is 1v1 or 2v2 only.' });
+          // Ranked is competitive: 5v5 ONLY (no 1v1/2v2), and it never fills
+          // with bots — every slot must be a real player within the rank window.
+          if (mode === 'ranked' && req.teamSize !== 5) {
+            send({ type: 'error', message: 'Ranked is 5v5 only.' });
             return;
           }
           if (matches.getMatchIdByPlayer(req.playerId)) {
