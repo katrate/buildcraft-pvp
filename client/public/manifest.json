@@ -1,0 +1,9 @@
+{
+  "name": "BuildCraft PvP",
+  "short_name": "BuildCraft",
+  "description": "Build your own fighter and prove it in turn-based PvP.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#ff9f43"
+}

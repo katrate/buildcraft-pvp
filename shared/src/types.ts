@@ -1,0 +1,421 @@
+// ============================================================
+// Shared types for BuildCraft PvP
+// Used by: client UI, server authority, combat engine, game data
+// ============================================================
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic';
+
+export type StatId = 'maxHp' | 'attack' | 'defense' | 'initiative';
+
+export type SlotId =
+  | 'core'
+  | 'active1'
+  | 'active2'
+  | 'passive1'
+  | 'passive2'
+  | 'weapon'
+  | 'armor'
+  | 'utility'
+  | 'ultimate';
+
+export interface SlotDef {
+  id: SlotId;
+  label: string;
+  accepts: 'power' | 'gear';
+  description: string;
+}
+
+// ------------------------------------------------------------
+// Items (data-driven content)
+// ------------------------------------------------------------
+
+export type PowerKind = 'core' | 'active' | 'passive' | 'ultimate';
+
+export type TargetRule =
+  | 'enemy'
+  | 'ally'
+  | 'self'
+  | 'all-enemies'
+  | 'all-allies'
+  | 'none';
+
+export type DamageType = 'physical' | 'fire' | 'poison' | 'lightning' | 'holy';
+
+export interface PowerDefinition {
+  id: string;
+  name: string;
+  description: string;
+  kind: 'power';
+  powerKind: PowerKind;
+  slot: SlotId;
+  price: number;
+  rarity: Rarity;
+  uses?: number; // how many times the ability can be used per match; undefined = unlimited
+  baseDamage?: number; // multiplier on caster attack
+  flatDamage?: number; // flat damage added
+  healAmount?: number; // flat heal to target
+  targetRule: TargetRule;
+  effects?: EffectSpec[]; // applied to target(s)
+  selfEffects?: EffectSpec[]; // applied to caster
+  statBonus?: Partial<Record<StatId, number>>; // passive stat contribution (cores/passives)
+  lifesteal?: number; // fraction of damage dealt returned as heal (0..1)
+  resetUses?: boolean; // e.g. Overclock: restore all ability uses
+  damageType?: DamageType;
+  aiPriority?: number; // bots prefer higher-priority usable actives
+}
+
+export interface GearDefinition {
+  id: string;
+  name: string;
+  description: string;
+  kind: 'gear';
+  slot: SlotId;
+  price: number;
+  rarity: Rarity;
+  stats: Partial<Record<StatId, number>>;
+  effects?: EffectSpec[]; // applied to owner at match start (e.g. Reactive Shield)
+  bonusAbilityUses?: number; // extra uses for every equipped active power
+}
+
+export type ItemDefinition = PowerDefinition | GearDefinition;
+
+// ------------------------------------------------------------
+// Effects / status framework (generic, data-driven)
+// ------------------------------------------------------------
+
+export type EffectKind =
+  | 'shield' // absorbs damage
+  | 'poison' // DoT per turn
+  | 'burn' // DoT per turn (fire)
+  | 'regen' // heal per turn
+  | 'attack_up'
+  | 'attack_down'
+  | 'defense_up'
+  | 'defense_down'
+  | 'slow' // -initiative% (negative amount = debuff)
+  | 'haste' // +initiative%
+  | 'stun' // skip next turn
+  | 'counter' // retaliate when attacked
+  | 'thorns'; // attacker takes damage
+
+export interface EffectSpec {
+  kind: EffectKind;
+  amount: number; // magnitude: DoT/regen per round, shield absorb, % for buffs/debuffs (0.4 = 40%)
+  duration: number; // rounds; 0 = permanent (buffs/DoTs still tick rounds)
+}
+
+export interface StatusInstance extends EffectSpec {
+  uid: string;
+  sourceId: string; // combatant id that applied it
+  displayName: string;
+  icon: string;
+}
+
+// ------------------------------------------------------------
+// Presets (player builds)
+// ------------------------------------------------------------
+
+export interface Preset {
+  id: string;
+  name: string;
+  slots: Partial<Record<SlotId, string | null>>; // slot id -> power/gear id (null = empty)
+  createdAt: number;
+}
+
+// ------------------------------------------------------------
+// Stats & combatants
+// ------------------------------------------------------------
+
+export interface BuildStats {
+  maxHp: number;
+  attack: number;
+  defense: number;
+  initiative: number;
+}
+
+export interface CombatBuild {
+  stats: BuildStats;
+  actives: PowerDefinition[];
+  passives: PowerDefinition[];
+  core: PowerDefinition | null;
+  ultimate: PowerDefinition | null;
+  startingEffects: EffectSpec[];
+  bonusAbilityUses: number; // gear bonus applied to every active power's per-match uses
+}
+
+export interface Combatant {
+  id: string;
+  playerId: string | null; // null for bots
+  name: string;
+  teamId: number;
+  isBot: boolean;
+  isPlayerControlled: boolean;
+  maxHp: number;
+  hp: number;
+  attack: number;
+  defense: number;
+  initiative: number;
+  alive: boolean;
+  kills: number;
+  usesLeft: Record<string, number>; // powerId -> uses remaining this match
+  effects: StatusInstance[];
+  ultimate: { id: string; charge: number } | null;
+  build: CombatBuild | null; // snapshot for UI (powers list)
+}
+
+export interface LogEntry {
+  round: number;
+  text: string;
+  seq: number;
+}
+
+export type MatchMode = 'practice' | 'unranked' | 'ranked' | 'custom';
+
+export type MatchPhase =
+  | 'WAITING'
+  | 'MATCH_START'
+  | 'ROUND_START'
+  | 'TURN_START'
+  | 'PLAYER_ACTION'
+  | 'RESOLVE_ACTION'
+  | 'CHECK_DEATH'
+  | 'CHECK_WIN'
+  | 'NEXT_TURN'
+  | 'ROUND_END'
+  | 'MATCH_END';
+
+export interface MatchState {
+  id: string;
+  mode: MatchMode;
+  phase: MatchPhase;
+  round: number;
+  turnOrder: string[]; // combatant ids in acting order
+  turnIndex: number; // index into turnOrder
+  combatants: Record<string, Combatant>;
+  teamCount: number;
+  log: LogEntry[];
+  logSeq: number;
+  winnerTeam: number | null;
+  currentCombatantId: string | null;
+  lastEvent?: MatchEvent;
+}
+
+export type MatchEvent =
+  | { type: 'turn'; text: string }
+  | { type: 'action'; text: string }
+  | { type: 'damage'; text: string }
+  | { type: 'effect'; text: string }
+  | { type: 'death'; text: string }
+  | { type: 'win'; text: string }
+  | { type: 'round'; text: string };
+
+// ------------------------------------------------------------
+// Actions
+// ------------------------------------------------------------
+
+export type PlayerAction =
+  | { type: 'USE_ABILITY'; powerId: string; targetId?: string }
+  | { type: 'BASIC_ATTACK'; targetId: string }
+  | { type: 'END_TURN' };
+
+// ------------------------------------------------------------
+// Match result & rewards
+// ------------------------------------------------------------
+
+export type PlayerResult = 'victory' | 'defeat' | 'draw';
+
+export interface RewardBreakdown {
+  baseXp: number;
+  baseCoins: number;
+  killXp: number;
+  killCoins: number;
+  roundXp: number;
+  roundCoins: number;
+  kills: number;
+}
+
+export interface MatchRewards {
+  result: PlayerResult;
+  xp: number;
+  coins: number;
+  roundsSurvived: number;
+  breakdown?: RewardBreakdown; // how the totals were computed (display only)
+}
+
+// ------------------------------------------------------------
+// Networking (client <-> server)
+// ------------------------------------------------------------
+
+export type RankedUpgrades = {
+  maxHp: number;
+  attack: number;
+  defense: number;
+};
+
+export type PvpMode = 'unranked' | 'ranked';
+
+export interface QueueRequest {
+  type: 'join_queue';
+  playerId: string;
+  name: string;
+  teamSize: 1 | 2 | 5;
+  mode: PvpMode;
+  preset: Preset;
+  initiativeUpgrade?: number; // coin-bought initiative levels (not normalized in unranked)
+  rankedUpgrades?: RankedUpgrades; // ranked-only stat upgrades
+  rating?: number; // ELO rating used by the server to compute rank deltas
+  partyId?: string; // queue the WHOLE party together (see PartyManager)
+}
+
+// ------------------------------------------------------------
+// Parties & friends
+// ------------------------------------------------------------
+
+// What a client submits for itself when creating/joining a party, so the
+// server can queue the whole party without asking each member again.
+export interface PartySetup {
+  preset: Preset;
+  initiativeUpgrade?: number;
+  rankedUpgrades?: RankedUpgrades;
+  rating?: number;
+}
+
+export interface PartyMemberInfo {
+  playerId: string;
+  name: string;
+  isLeader: boolean;
+  /** Ready-check state — everyone must be ready before the leader can queue (default true). */
+  ready: boolean;
+}
+
+export interface PartyInfo {
+  partyId: string;
+  leaderId: string;
+  members: PartyMemberInfo[];
+}
+
+export interface Friend {
+  playerId: string;
+  name: string;
+}
+
+export type ClientMessage =
+  | QueueRequest
+  | { type: 'leave_queue'; playerId: string; partyId?: string }
+  | { type: 'player_action'; matchId: string; playerId: string; action: PlayerAction }
+  | { type: 'rejoin'; playerId: string }
+  // presence & party flow
+  | { type: 'hello'; playerId: string; name: string }
+  | ({ type: 'create_party'; playerId: string } & PartySetup)
+  | ({ type: 'party_invite'; playerId: string; targetName?: string; targetPlayerId?: string })
+  | ({ type: 'party_accept'; playerId: string; partyId: string } & PartySetup)
+  | { type: 'party_decline'; playerId: string; partyId: string }
+  | { type: 'party_leave'; playerId: string; partyId: string }
+  | { type: 'party_kick'; playerId: string; partyId: string; targetId: string }
+  | ({ type: 'party_setup'; playerId: string; partyId: string } & PartySetup)
+  | { type: 'party_set_ready'; playerId: string; partyId: string; ready: boolean }
+  | { type: 'player_lookup'; name: string }
+  // custom match lobbies
+  | ({ type: 'custom_create'; playerId: string } & PartySetup)
+  | { type: 'custom_invite'; playerId: string; targetName?: string; targetPlayerId?: string }
+  | ({ type: 'custom_accept'; playerId: string; lobbyId: string } & PartySetup)
+  | { type: 'custom_decline'; playerId: string; lobbyId: string }
+  | { type: 'custom_leave'; playerId: string; lobbyId: string }
+  | { type: 'custom_kick'; playerId: string; lobbyId: string; targetId: string }
+  | { type: 'custom_team'; playerId: string; lobbyId: string; targetId: string; team: 0 | 1 }
+  | { type: 'custom_norm'; playerId: string; lobbyId: string; norm: CustomNorm }
+  | { type: 'custom_start'; playerId: string; lobbyId: string }
+  | ({ type: 'custom_setup'; playerId: string; lobbyId: string } & PartySetup);
+
+export type ServerMessage =
+  | { type: 'welcome'; serverTime: number; ping: number }
+  | { type: 'queue_update'; queued: number; teamSize: 1 | 2 | 5; mode: PvpMode; minPlayers: number; queuedSince?: number } // oldest queued player's join time (ms epoch) — drives the client's wait timer
+  | { type: 'queue_left'; reason?: string } // you were pulled out of the queue (e.g. party broken up)
+  | { type: 'match_found'; matchId: string; mode: 'unranked' | 'ranked' | 'custom'; teamSize: 1 | 2 | 5; countdownMs: number; teamA?: number; teamB?: number } // match formed — starts after the countdown
+  | { type: 'match_start'; match: MatchState; yourCombatantIds: string[]; yourTeam: number }
+  | { type: 'match_state'; match: MatchState }
+  | {
+      type: 'match_end';
+      matchId: string;
+      winnerTeam: number;
+      rewards: MatchRewards;
+      result: PlayerResult;
+      rankDelta?: number; // ranked only: +1 win / -1 loss / 0 draw
+    }
+  | { type: 'error'; message: string }
+  // party & presence
+  | { type: 'party_update'; party: PartyInfo }
+  | { type: 'party_disbanded'; partyId: string }
+  | { type: 'party_invite'; partyId: string; fromId: string; fromName: string }
+  | { type: 'player_lookup_result'; name: string; playerId: string; online: boolean }
+  // custom match lobbies
+  | { type: 'custom_update'; lobby: CustomLobbyInfo }
+  | { type: 'custom_disbanded'; lobbyId: string }
+  | { type: 'custom_invite'; lobbyId: string; fromId: string; fromName: string };
+
+// The per-member setup a custom lobby stores (build/upgrades), so the leader
+// can start a match without asking everyone again.
+export interface CustomMemberData extends CustomMemberInfo {
+  setup: PartySetup;
+}
+
+// The party setup a member must have before the leader can queue. Every
+// member submits one via create/accept/setup; the server stores them.
+export interface PartyMemberData extends PartyMemberInfo {
+  setup: PartySetup;
+}
+
+// ------------------------------------------------------------
+// Custom matches (friend lobbies)
+// ------------------------------------------------------------
+
+// How custom-match stats are normalized. `standard` = unranked normalization;
+// a rank name normalizes everyone to that rank's stat budget (ranked-upgrade
+// ceiling applied to the normalized base) so a Bronze lobby and a Diamond
+// lobby play at different power levels, but everyone in the same lobby is equal.
+export type CustomNorm = 'standard' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+
+export interface CustomMemberInfo {
+  playerId: string;
+  name: string;
+  isLeader: boolean;
+  team: 0 | 1;
+}
+
+export interface CustomLobbyInfo {
+  lobbyId: string;
+  leaderId: string;
+  norm: CustomNorm;
+  members: CustomMemberInfo[];
+}
+
+// ------------------------------------------------------------
+// Persistence (browser-local V1)
+// ------------------------------------------------------------
+
+export interface PlayerRank {
+  rating: number; // ELO-style rating (starts 1000); rank band is derived from it
+  games: number; // ranked matches played (for K-factor / new-player weighting later)
+}
+
+export interface PlayerRecord {
+  wins: number;
+  losses: number;
+  matches: number;
+}
+
+export interface PlayerState {
+  playerId: string;
+  name: string;
+  level: number;
+  xp: number; // xp accumulated toward next level
+  coins: number;
+  inventory: { powers: string[]; gear: string[] };
+  presets: Preset[];
+  activePresetId: string;
+  record: PlayerRecord;
+  initiativeUpgrade: number; // coin-bought initiative levels (applies everywhere, not normalized in unranked)
+  rankedUpgrades: RankedUpgrades; // coin-bought upgrades that apply ONLY in ranked matches
+  rank: PlayerRank;
+  friends: Friend[]; // locally stored friends (no accounts in V1)
+}
