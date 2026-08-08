@@ -29,7 +29,7 @@ npm run dev
 | Initiative upgrade | Coin-bought in the Build editor, cost creeps per level; decides who acts first and is **not normalized** in unranked |
 | Unranked PvP | 1v1, 2v2, 5v5 via server matchmaking; teams fill with real players first, bots as a fallback; stats normalized (except initiative upgrade) |
 | Ranked PvP | Unlocks at Level 20: **two ladders — 1v1 (solo) and 5v5 (parties)** — each with its **own rank** and its **own stat-upgrade pool**; Iron→Supreme ELO ladder (8 bands), upgrades capped by that ladder's rank, no bots — every slot is a real player within your rank window |
-| Party & friends | Friends list (add by online pilot name), parties of up to 5, ready-check before queueing, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
+| Accounts & friends | **Supabase accounts** (email/password login — optional locally, required for the live game), profiles/coins/inventory/presets/ranks stored in Postgres, **friend requests by username** (no online requirement), parties of up to 5 with ready-check, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
 | Progression | Endless XP curve — no level cap, XP requirements grow every level, coins, record |
 | Combat | Server-authoritative: initiative, rounds/turns, **per-match ability uses** (no energy), DoTs, shields, buffs/debuffs, stuns, counter/thorns, ultimates charging +1/round and +1/kill (5 to fire) |
 
@@ -41,9 +41,13 @@ npm run dev
 /shared  Pure TypeScript: types, game data, combat engine, progression, rewards
 ```
 
-- **No auth / no database in V1.** Player data (name, level, XP, coins, inventory,
-  presets, offline upgrades) lives in `localStorage` per browser. Server-side accounts
-  can be added later without touching the combat loop.
+- **Supabase accounts (optional in dev, required in production).** Without env vars the
+  game runs in dev mode — player data lives in `localStorage` per browser. With them,
+  **login is mandatory**: the profile row hydrates into the client store on sign-in and
+  every change is debounce-synced back to Postgres, so coins/builds/ranks follow the
+  account across browsers. The server verifies the access token (JWT) on the WebSocket
+  handshake and pins the socket to the authenticated user id, and writes finished
+  matches to the `matches` ledger via the service role key.
 - **The server is authoritative over matches.** Clients send intentions
   (`USE_ABILITY fire_bolt on p2`); the server validates turns, ability uses, and
   computes all damage/results (see `shared/src/engine/combat.ts`).
@@ -96,9 +100,14 @@ npm run build        # production client build
 
 ## Parties & friends (V1)
 
-- **Friends** live in each browser's localStorage (no accounts yet) and are added by
-  **online pilot name** (`player_lookup` → the server finds the connected player).
-  Invite a friend → they get a live invite card → Join/Decline.
+- **Friends are account-driven.** With Supabase configured, friends and friend requests
+  are rows in Postgres (`friends` + `friend_requests` tables with RLS). Send a request
+  by **username** — the other player doesn't need to be online; they accept it next time
+  they sign in. Request flows: incoming (Accept / Decline) and outgoing (Cancel), plus
+  Remove. In dev mode there are no accounts, so the old by-name lookup (must be online)
+  is unavailable.
+- Invite a friend → they get a live invite card → Join/Decline. (Party **invites** still
+  need the friend online — parties are live sessions; the server tells you if not.)
 - **Parties are server-side, session-scoped**: a party is created by a leader, members
   join via invite, and everyone submits their current build/upgrades (`party_setup`)
   so the **leader can queue the whole party in one click**.
@@ -187,6 +196,45 @@ needs more XP than a level-21 player, and so on. Level 20 is only the **ranked
 unlock threshold** (`RANKED_UNLOCK_LEVEL`), not a ceiling. Starter kit: 1000 coins
 (exactly one starter purchase), Fire Bolt + Iron Sword.
 
+## Supabase accounts & database (setup)
+
+All SQL is in **`supabase/schema.sql`** (idempotent — safe to re-run):
+
+1. Create a project at https://supabase.com.
+2. **SQL Editor → New query → paste the whole `supabase/schema.sql` → Run.** This creates
+   `profiles` (one row per auth user, with a signup trigger that auto-creates the starter
+   kit), `friends` + `friend_requests` (mutual rows created by the accept trigger), the
+   `matches` ledger, RLS policies, and the RPCs (`find_user_by_username`, `get_friends`,
+   `get_friend_requests`, `remove_friend`).
+3. **Authentication → Providers → enable Email** (email/password).
+4. **Authentication → URL Configuration →** add `http://localhost:5173` as a site URL
+   (and a production URL later).
+5. **Settings → API →** copy the **Project URL** and the **anon** and **service_role** keys.
+
+Then configure the two env files (never commit real keys):
+
+```bash
+# .env  (server — service role; also used by npm run dev:server)
+SUPABASE_URL=https://xxxxxxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# client/.env  (browser — anon key only; Vite exposes VITE_* safely)
+VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJ...
+```
+
+Startup behavior:
+
+- **Client** — with `VITE_*` set, the app **requires a login screen** (sign in / create
+  account with username). After sign-in it hydrates the profile from Postgres and
+  debounce-saves every change back (800ms, fire-and-forget). Without them, the old
+  dev-mode (localStorage) experience runs — nothing breaks.
+- **Server** — with `SUPABASE_*` set, the WebSocket handshake verifies the client's
+  access token (`hello.accessToken` → `auth.getUser`) and binds the socket to the
+  authenticated user id; expired tokens are rejected. Finished matches are written to
+  `matches` / `match_participants`. Without them, the server runs in dev fallback (any
+  id, no ledger).
+
 ## Dev shortcuts
 
 - The main menu has a **“⚡ Instantly Unlock Ranked”** dev button that jumps you to
@@ -235,5 +283,5 @@ module — almost always a **serving** mistake, not a code bug:
 ## V1 scope deliberately excluded
 
 Final art, animations, maps, events/seasons, real-money payments, cosmetics marketplace,
-clans/chat, mobile. The core loop comes first. (Friends/party/custom-lobby systems are
-in; persistent accounts and cross-session friends are not.)
+clans/chat, mobile. The core loop comes first. (Accounts, cross-session friends and the
+match ledger are in; everything else stays out.)

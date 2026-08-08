@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Intro } from './screens/Intro';
+import { Login } from './screens/Login';
 import { MainMenu, type Screen } from './screens/MainMenu';
 import { Play } from './screens/Play';
 import { Build } from './screens/Build';
@@ -10,11 +10,12 @@ import { CombatPractice } from './screens/CombatPractice';
 import { CombatOnline, type OnlineEndInfo, type OnlineMatchInfo } from './screens/CombatOnline';
 import { CountdownScreen } from './screens/Countdown';
 import { usePlayer, grantRewards, recordMatch, applyRankDelta } from './state/store';
+import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
 import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
 import { AppShell, Brand, Button, Chip, MenuScreen, Muted, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
 
-type AppScreen = Screen | 'intro' | 'countdown';
+type AppScreen = Screen | 'countdown';
 
 type CountdownMode = 'unranked' | 'ranked' | 'custom';
 
@@ -29,7 +30,8 @@ interface MatchCountdown {
 
 export function App() {
   const player = usePlayer();
-  const [screen, setScreen] = useState<AppScreen>(player.name ? 'menu' : 'intro');
+  const auth = useAuth();
+  const [screen, setScreen] = useState<AppScreen>('menu');
   const [onlineMatch, setOnlineMatch] = useState<OnlineMatchInfo | null>(null);
   const [endInfo, setEndInfo] = useState<OnlineEndInfo | null>(null);
   const [countdown, setCountdown] = useState<MatchCountdown | null>(null);
@@ -42,6 +44,15 @@ export function App() {
   useEffect(() => {
     connectSocket();
   }, []);
+
+  // When a different account signs in (or you sign out & back in), land on the
+  // main menu instead of whatever screen the previous player was on.
+  useEffect(() => {
+    setScreen('menu');
+    setOnlineMatch(null);
+    setEndInfo(null);
+    setCountdown(null);
+  }, [player.playerId]);
 
   // If the socket drops while queued, the server already pulled us out of the
   // queue — clear the timer so it never shows a dead "Searching…" state.
@@ -151,7 +162,30 @@ export function App() {
     navigate('play');
   }, [navigate]);
 
-  if (screen === 'intro') return <Intro onEnter={() => setScreen('menu')} />;
+  // ------------------------------------------------------------
+  // ACCOUNT GATE — mandatory when Supabase is configured.
+  //  - dev mode (no env vars): straight into the game (localStorage saves)
+  //  - account mode: login screen until signed in, then a loading screen
+  //    while the profile hydrates.
+  // ------------------------------------------------------------
+  if (auth.devMode) {
+    // dev mode — no gate
+  } else if (auth.status === 'unknown') {
+    return (
+      <MenuScreen>
+        <Muted>Loading account…</Muted>
+      </MenuScreen>
+    );
+  } else if (auth.status === 'signed-out') {
+    return <Login />;
+  } else if (!auth.hydrated) {
+    return (
+      <MenuScreen>
+        <Spinner />
+        <Muted>Loading your fighter…</Muted>
+      </MenuScreen>
+    );
+  }
 
   return (
     <AppShell>
@@ -159,6 +193,7 @@ export function App() {
         <TopBar>
           <Brand onClick={() => navigate('menu')}>BuildCraft PVP</Brand>
           <Stats>
+            {auth.devMode && <Chip tone="warn">dev mode</Chip>}
             <Chip>Lv {player.level}</Chip>
             <Chip tone="warn">🪙 {player.coins}</Chip>
             <Chip>{player.name}</Chip>

@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import { recordMatchResult, type MatchRecordParticipant } from './db';
 import {
   DISCONNECT_GRACE_MS,
   MATCH_COUNTDOWN_MS,
@@ -387,6 +388,7 @@ export class MatchManager {
     for (const [, dt] of m.disconnectTimers) clearTimeout(dt);
 
     const survived = roundsSurvived(m.state);
+    const participants: MatchRecordParticipant[] = [];
 
     // Ranked rating deltas (ELO): each team is treated as one rating (its
     // players' average), so 1v1 uses direct ratings and 2v2 uses team averages.
@@ -425,8 +427,19 @@ export class MatchManager {
         teamSize: m.teamSize,
         rankDelta,
       });
+      participants.push({
+        playerId: player.playerId,
+        team: player.teamId,
+        result,
+        kills: combatant?.kills ?? 0,
+        coins: rewards.coins,
+        xp: rewards.xp,
+        rankDelta: rankDelta ?? null,
+      });
       this.matchIdByPlayer.delete(player.playerId);
     }
+    // Server-side ledger (Supabase service role; no-op when unconfigured).
+    void recordMatchResult(m.state.mode, m.teamSize, m.state.winnerTeam ?? -1, participants);
     this.matches.delete(matchId);
   }
 

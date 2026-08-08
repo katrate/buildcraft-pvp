@@ -1,45 +1,27 @@
-import { useEffect, useState } from 'react';
-import { usePlayer, addFriend, removeFriend } from '../state/store';
+import { usePlayer } from '../state/store';
 import {
   useParty,
   createParty,
-  inviteFriend,
   acceptInvite,
   declineInvite,
   leaveParty,
   kickMember,
   setReady,
 } from '../state/party';
-import { sendMessage, subscribeMessages, useWsStatus } from '../services/ws';
-import { Button, Chip, Col, Divider, Input, Panel, PanelTitle, Row, Tiny, UpgradeRow } from '../ui/glass';
+import { useWsStatus } from '../services/ws';
+import { FriendsPanel } from './FriendsPanel';
+import { Button, Chip, Col, Panel, PanelTitle, Row, Tiny, UpgradeRow } from '../ui/glass';
 
 export function PartyPanel() {
   const player = usePlayer();
   const status = useWsStatus();
-  const { party, invites, lastLookup } = useParty();
-  const [friendName, setFriendName] = useState('');
+  const { party, invites } = useParty();
 
   const inParty = party !== null;
   const partySize = inParty ? party.members.length : 0;
   const unreadyMembers = inParty ? party.members.filter((m) => !m.ready) : [];
   const allReady = unreadyMembers.length === 0;
   const unreadyNames = unreadyMembers.map((m) => m.name).join(', ');
-
-  // Friend lookups are resolved by the server on this screen.
-  useEffect(() => {
-    return subscribeMessages((msg) => {
-      if (msg.type === 'player_lookup_result' && msg.online) {
-        addFriend({ playerId: msg.playerId, name: msg.name });
-      }
-    });
-  }, []);
-
-  function addFriendByName(): void {
-    const name = friendName.trim();
-    if (!name) return;
-    sendMessage({ type: 'player_lookup', name });
-    setFriendName('');
-  }
 
   return (
     <Panel>
@@ -125,46 +107,8 @@ export function PartyPanel() {
         </Col>
       )}
 
-      <Divider />
-      <Row gap={8} style={{ marginBottom: 8 }}>
-        <Input
-          placeholder="Friend's pilot name (must be online)"
-          value={friendName}
-          onChange={(e) => setFriendName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') addFriendByName();
-          }}
-          style={{ flex: 1 }}
-        />
-        <Button onClick={addFriendByName}>Add friend</Button>
-      </Row>
-      {lastLookup && (
-        <Tiny style={{ display: 'block', marginBottom: 6 }}>
-          {lastLookup.online
-            ? `✓ "${lastLookup.name}" added to friends.`
-            : `✗ "${lastLookup.name}" is not online — V1 friends must be online to add.`}
-        </Tiny>
-      )}
-      {player.friends.length === 0 ? (
-        <Tiny>No friends yet — add your friend's pilot name above (they must be online in the same server).</Tiny>
-      ) : (
-        <Col gap={6}>
-          {player.friends.map((f) => (
-            <UpgradeRow key={f.playerId}>
-              <div>
-                <b>{f.name}</b>
-                <Tiny style={{ marginLeft: 8 }}>friend</Tiny>
-              </div>
-              <Row gap={8}>
-                <Button onClick={() => inviteFriend(f.playerId)} title="Invite to your party (creates one if needed; friend must be online)">
-                  Invite
-                </Button>
-                <Button variant="ghost" onClick={() => removeFriend(f.playerId)}>Remove</Button>
-              </Row>
-            </UpgradeRow>
-          ))}
-        </Col>
-      )}
+      {/* Friends — Supabase-driven: requests by username, no online requirement */}
+      <FriendsPanel />
     </Panel>
   );
 }

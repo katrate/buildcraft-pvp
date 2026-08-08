@@ -334,8 +334,10 @@ export type ClientMessage =
   | { type: 'leave_queue'; playerId: string; partyId?: string }
   | { type: 'player_action'; matchId: string; playerId: string; action: PlayerAction }
   | { type: 'rejoin'; playerId: string }
-  // presence & party flow
-  | { type: 'hello'; playerId: string; name: string }
+  // presence & party flow. With Supabase accounts, `hello` carries the
+  // access token so the server can bind the socket to the verified user id
+  // (it overrides playerId when valid).
+  | { type: 'hello'; playerId: string; name: string; accessToken?: string }
   | ({ type: 'create_party'; playerId: string } & PartySetup)
   | ({ type: 'party_invite'; playerId: string; targetName?: string; targetPlayerId?: string })
   | ({ type: 'party_accept'; playerId: string; partyId: string } & PartySetup)
@@ -460,5 +462,5 @@ export interface PlayerState {
   // is capped by that format's rank). Upgrades apply ONLY in ranked matches.
   ranks: Record<RankedFormat, PlayerRank>;
   rankedUpgrades: Record<RankedFormat, RankedUpgrades>;
-  friends: Friend[]; // locally stored friends (no accounts in V1)
+  friends: Friend[]; // friend list (Supabase-driven when accounts are enabled)
 }

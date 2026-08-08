@@ -7,6 +7,7 @@ import { MatchmakingQueue } from './queue';
 import { PartyManager } from './party';
 import { CustomLobbyManager } from './custom';
 import { validatePreset } from './validation';
+import { supabaseConfigured, verifySupabaseToken } from './db';
 
 export interface GameServer {
   httpServer: http.Server;
@@ -38,6 +39,9 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
 
   // playerId -> active socket
   const sockets = new Map<string, WebSocket>();
+  // socket -> verified auth user id (set by `hello` when a valid Supabase
+  // access token is presented; absent in dev mode / before hello)
+  const verifiedBySocket = new WeakMap<WebSocket, string>();
 
   wss.on('connection', (ws) => {
     let boundPlayerId: string | null = null;
@@ -46,7 +50,7 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
     };
 
-    ws.on('message', (raw) => {
+    ws.on('message', async (raw) => {
       let msg: ClientMessage;
       try {
         msg = JSON.parse(raw.toString());
@@ -55,8 +59,34 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
         return;
       }
 
+      // Verified sockets are pinned to the authenticated user id: no message
+      // from this socket can ever claim another player's identity.
+      const verified = verifiedBySocket.get(ws);
+      if (verified) {
+        msg = { ...msg, playerId: verified } as ClientMessage;
+      }
+
       switch (msg.type) {
         case 'hello': {
+          if (supabaseConfigured()) {
+            // Accounts are enforced: EVERY socket must present a valid token.
+            // No token, or a token that fails verification, is rejected — a
+            // client can never claim another user's identity.
+            if (!msg.accessToken) {
+              send({ type: 'error', message: 'Not signed in — sign in to play.' });
+              break;
+            }
+            const verifiedId = await verifySupabaseToken(msg.accessToken);
+            if (!verifiedId) {
+              send({ type: 'error', message: 'Session expired — please sign in again.' });
+              break;
+            }
+            boundPlayerId = verifiedId;
+            verifiedBySocket.set(ws, verifiedId);
+            partyManager.register(verifiedId, msg.name.slice(0, 24), ws);
+            break;
+          }
+          // Dev fallback: no Supabase on this server — trust the client id.
           boundPlayerId = msg.playerId;
           partyManager.register(msg.playerId, msg.name.slice(0, 24), ws);
           break;

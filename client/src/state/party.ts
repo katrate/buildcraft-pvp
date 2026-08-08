@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { PartyInfo, ServerMessage } from '../../../shared/src/types';
 import { getWsStatus, sendMessage, subscribeMessages, subscribeWsStatus } from '../services/ws';
 import { addFriend, getActivePreset, getState, subscribePlayer } from './store';
+import { getAccessToken, getAuth, subscribeAuth } from './auth';
 
 // ------------------------------------------------------------
 // Party state (session-scoped, NOT persisted).
@@ -53,9 +54,32 @@ subscribeWsStatus(() => {
   const nowConnected = getWsStatus() === 'connected';
   if (nowConnected && !wasConnected) {
     const p = getState();
-    if (p.playerId) sendMessage({ type: 'hello', playerId: p.playerId, name: p.name });
+    if (!p.playerId) return;
+    const a = getAuth();
+    // Only announce ourselves when there is a real identity to announce:
+    // dev mode (local id) or a hydrated signed-in account. While signed out in
+    // account mode the server rejects token-less hellos — don't spam it.
+    if (!a.devMode && !(a.status === 'signed-in' && a.hydrated)) return;
+    // With accounts the server verifies this token and binds the socket to
+    // the authenticated user id (dev mode sends no token — server fallback).
+    sendMessage({ type: 'hello', playerId: p.playerId, name: p.name, accessToken: getAccessToken() ?? undefined });
   }
   wasConnected = nowConnected;
+});
+
+// The socket may connect BEFORE the user signs in (account mode). When the
+// login completes, announce ourselves so the server knows who we are.
+let wasAuthed = false;
+subscribeAuth(() => {
+  const a = getAuth();
+  const authedNow = a.devMode || (a.status === 'signed-in' && a.hydrated);
+  if (authedNow && !wasAuthed && getWsStatus() === 'connected') {
+    const p = getState();
+    if (p.playerId) {
+      sendMessage({ type: 'hello', playerId: p.playerId, name: p.name, accessToken: getAccessToken() ?? undefined });
+    }
+  }
+  wasAuthed = authedNow;
 });
 
 // ------------------------------------------------------------

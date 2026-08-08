@@ -123,12 +123,27 @@ function load(): PlayerState {
 let state: PlayerState = load();
 const listeners = new Set<() => void>();
 
+// ------------------------------------------------------------
+// Persistence hooks — Supabase sync registers here (auth.ts). Every change
+// is still written to localStorage first (offline cache + dev mode), then
+// each hook is notified so the DB copy can catch up. Hooks are fire-and-
+// forget: the game never waits on the network.
+// ------------------------------------------------------------
+type SaveHook = (s: PlayerState) => void;
+const saveHooks = new Set<SaveHook>();
+
+export function registerSaveHook(fn: SaveHook): () => void {
+  saveHooks.add(fn);
+  return () => saveHooks.delete(fn);
+}
+
 function emit(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     /* storage full / private mode — keep in-memory state */
   }
+  for (const fn of saveHooks) fn(state);
   for (const fn of listeners) fn();
 }
 
@@ -151,6 +166,21 @@ export function usePlayer(): PlayerState {
 
 export function setName(name: string): void {
   state = { ...state, name: name.trim().slice(0, 24) };
+  emit();
+}
+
+/**
+ * Replace the whole player state — used when an account's profile loads from
+ * Supabase (id becomes the auth user id, name becomes the username).
+ */
+export function replaceState(next: PlayerState): void {
+  state = { ...next };
+  emit();
+}
+
+/** Replace the friend list (kept in PlayerState so existing UIs keep working). */
+export function setFriendsList(friends: Friend[]): void {
+  state = { ...state, friends };
   emit();
 }
 
