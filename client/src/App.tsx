@@ -13,7 +13,7 @@ import { usePlayer, grantRewards, recordMatch, applyRankDelta } from './state/st
 import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
 import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
-import { AppShell, Brand, Button, Chip, MenuScreen, Muted, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
+import { AppShell, Brand, Button, Chip, MenuScreen, Muted, Panel, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
 import { I } from './ui/icons';
 
 type AppScreen = Screen | 'countdown';
@@ -164,22 +164,35 @@ export function App() {
   }, [navigate]);
 
   // ------------------------------------------------------------
-  // ACCOUNT GATE — mandatory when Supabase is configured.
-  //  - dev mode (no env vars): straight into the game (localStorage saves)
-  //  - account mode: login screen until signed in, then a loading screen
-  //    while the profile hydrates.
+  // ACCOUNT GATE — accounts are mandatory (no anonymous/dev mode).
+  // Login screen until signed in, then a loading screen while the profile
+  // hydrates. If the client keys are missing, show a setup screen.
   // ------------------------------------------------------------
-  if (auth.devMode) {
-    // dev mode — no gate
-  } else if (auth.status === 'unknown') {
+  if (auth.unconfigured) {
+    return (
+      <MenuScreen>
+        <Panel style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
+          <h3>Supabase is not configured</h3>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Accounts are required, but the client keys are missing. Copy{' '}
+            <code>client/.env.example</code> to <code>client/.env</code>, fill in your
+            project URL and anon key, then refresh.
+          </p>
+        </Panel>
+      </MenuScreen>
+    );
+  }
+  if (auth.status === 'unknown') {
     return (
       <MenuScreen>
         <Muted>Loading account…</Muted>
       </MenuScreen>
     );
-  } else if (auth.status === 'signed-out') {
+  }
+  if (auth.status === 'signed-out') {
     return <Login />;
-  } else if (!auth.hydrated) {
+  }
+  if (!auth.hydrated) {
     return (
       <MenuScreen>
         <Spinner />
@@ -194,7 +207,6 @@ export function App() {
         <TopBar>
           <Brand onClick={() => navigate('menu')}>BuildCraft PVP</Brand>
           <Stats>
-            {auth.devMode && <Chip tone="warn">dev mode</Chip>}
             <Chip>Lv {player.level}</Chip>
             <Chip tone="warn">
               <I n="coins" /> {player.coins}

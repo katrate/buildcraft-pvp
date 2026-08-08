@@ -183,7 +183,7 @@ describe('multiplayer integration', () => {
   });
 
   it('matches two players, plays a full 1v1, and pays out server-computed rewards', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const alice = new TestClient(url, 'alice');
     const bob = new TestClient(url, 'bob');
@@ -224,7 +224,7 @@ describe('multiplayer integration', () => {
   });
 
   it('fills 2v2 teams with bots and completes a match', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const a = new TestClient(url, 'aa');
     const b = new TestClient(url, 'bb');
@@ -246,7 +246,7 @@ describe('multiplayer integration', () => {
   }, 90000);
 
   it('starts a 5v5 match with bot-filled teams for just two players', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const a = new TestClient(url, 'x5a');
     const b = new TestClient(url, 'x5b');
@@ -268,7 +268,7 @@ describe('multiplayer integration', () => {
   }, 120000);
 
   it('applies the initiative upgrade on top of unranked normalization', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const a = new TestClient(url, 'init_a');
     const b = new TestClient(url, 'init_b');
@@ -290,7 +290,7 @@ describe('multiplayer integration', () => {
   });
 
   it('runs a ranked 5v5, pays ranked rewards, and reports rank deltas', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const clients = Array.from({ length: 10 }, (_, i) => new TestClient(url, `rk5_${i}`));
     await Promise.all(clients.map((c) => c.ready()));
@@ -324,7 +324,7 @@ describe('multiplayer integration', () => {
   }, 120000);
 
   it('runs a ranked 1v1 on its own ladder (solo only, no bots)', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const alice = new TestClient(url, 'r1_a');
     const bob = new TestClient(url, 'r1_b');
@@ -366,7 +366,7 @@ describe('multiplayer integration', () => {
     // Determinism: gold units queue FIRST, and partitionTeams is DFS "try team A
     // first", so the 5 gold solos fill team A and the 5 silver solos team B —
     // favs[0] and dogs[0] are therefore always on opposite teams.
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const favs = Array.from({ length: 5 }, (_, i) => new TestClient(url, `fav_${i}`));
     const dogs = Array.from({ length: 5 }, (_, i) => new TestClient(url, `dog_${i}`));
@@ -395,7 +395,7 @@ describe('multiplayer integration', () => {
   }, 120000);
 
   it('ranked matchmaking respects the ±1 rank window (5v5)', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw${i}`)); // rating 1400 -> Gold (tier 3)
     const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz${i}`)); // rating 1000 -> Bronze (tier 1)
@@ -419,7 +419,7 @@ describe('multiplayer integration', () => {
 
   it('widens the rank window after a long wait so sparse ranks still match (5v5)', async () => {
     // Short widen threshold for the test (2.5s instead of 60s).
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, rankWidenAfterMs: 2500, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, rankWidenAfterMs: 2500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw2_${i}`)); // rating 1400 -> Gold (tier 3)
     const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz2_${i}`)); // rating 1000 -> Bronze (tier 1)
@@ -435,7 +435,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('queues a party of 2 for unranked 2v2 together on the same team', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'pl_a');
     const member = new TestClient(url, 'pm_a');
@@ -474,7 +474,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('queues a party of 3 for unranked 5v5 and bot-fills the other 7 slots', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'pl5');
     const m1 = new TestClient(url, 'pm5a');
@@ -514,7 +514,7 @@ describe('multiplayer integration', () => {
   }, 40000);
 
   it('rejects a ranked party whose member is 2 rank bands from the leader', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'plr'); // bronze (1000)
     const member = new TestClient(url, 'pmr');
@@ -542,7 +542,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('queues a ranked 5v5 party and matches opponents around the leader rank', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'plq');
     const member = new TestClient(url, 'pmq');
@@ -576,7 +576,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('keeps waiting for real players when someone new joins during the search window', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 3000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 3000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const first = new TestClient(url, 'first');
     await first.ready();
@@ -601,7 +601,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('blocks party matchmaking until every member readies up (ready check)', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'rr_l');
     const member = new TestClient(url, 'rr_m');
@@ -652,7 +652,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('fills a party\'s empty slots with real players, not bots', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'rf_l');
     const member = new TestClient(url, 'rf_m');
@@ -698,7 +698,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('pulls the whole party out of the queue when a member readies down mid-queue', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 5000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 5000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'rq_l');
     const member = new TestClient(url, 'rq_m');
@@ -734,7 +734,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('sends a match-found countdown before the arena starts', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1000, matchCountdownMs: 300 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 1000, matchCountdownMs: 300 });
     const url = `ws://127.0.0.1:${server.port}`;
     const a = new TestClient(url, 'cd_a');
     const b = new TestClient(url, 'cd_b');
@@ -769,7 +769,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('plays an uneven custom 2v1 lobby match: no bots, normalized to the chosen rank', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'cu_l');
     const m1 = new TestClient(url, 'cu_m1');
@@ -838,7 +838,7 @@ describe('multiplayer integration', () => {
   }, 30000);
 
   it('enforces custom lobby rules: leader-only start, party & queue conflicts', async () => {
-    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
     const leader = new TestClient(url, 'cx_l');
     const member = new TestClient(url, 'cx_m');
@@ -883,4 +883,33 @@ describe('multiplayer integration', () => {
     leader.close();
     member.close();
   }, 30000);
+
+  it('rejects unauthenticated sockets in strict mode (no dev fallback)', async () => {
+    // No allowUnauthenticated here — this is the real (accounts-only) mode.
+    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    const url = `ws://127.0.0.1:${server.port}`;
+
+    // A tokenless hello is rejected outright.
+    const anon = new TestClient(url, 'anon');
+    await anon.ready();
+    anon.hello();
+    await anon.waitFor((m) => m.some((x) => x.type === 'error' && x.message.includes('Not signed in')));
+
+    // Without a successful hello, an identity-bearing message (join_queue) is
+    // rejected too — a client can never claim a player id it isn't authed as.
+    anon.join(1, TEST_PRESET);
+    await anon.waitFor((m) => m.filter((x) => x.type === 'error').length >= 2);
+    const errs = anon.messages.filter((m): m is Extract<ServerMessage, { type: 'error' }> => m.type === 'error');
+    expect(errs.every((e) => e.message.includes('Not signed in'))).toBe(true);
+    expect(anon.messages.some((m) => m.type === 'queue_update')).toBe(false);
+
+    // A fabricated token is rejected too.
+    const imposter = new TestClient(url, 'imposter');
+    await imposter.ready();
+    imposter.ws.send(JSON.stringify({ type: 'hello', playerId: 'someone_else', name: 'x', accessToken: 'fake.token' }));
+    await imposter.waitFor((m) => m.some((x) => x.type === 'error' && x.message.includes('Session expired')));
+
+    anon.close();
+    imposter.close();
+  }, 20000);
 });

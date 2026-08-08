@@ -8,32 +8,29 @@ import { refreshFriends } from './friends';
 // ------------------------------------------------------------
 // Account auth (Supabase) — the mandatory identity layer.
 //
-// Modes:
-//  - DEV MODE  (no SUPABASE env vars): status is immediately 'signed-in' with
-//    hydrated=true; the game behaves exactly like the old localStorage-only
-//    build. No account is created.
-//  - ACCOUNT MODE (env vars set): the game gate shows a login screen until a
-//    session exists; after sign-in the profile row hydrates into the local
-//    store and every change is debounce-synced back to Supabase.
+// Accounts are REQUIRED: the game gate shows a login screen until a session
+// exists, then the profile row hydrates into the local store and every change
+// is debounce-synced back to Supabase. There is no anonymous/dev mode.
+// If the client is not configured (client/.env missing), `unconfigured` flips
+// and the app shows a setup screen instead of pretending to work.
 // ------------------------------------------------------------
 
 export type AuthStatus = 'unknown' | 'signed-out' | 'signed-in';
 
 export interface AuthState {
   status: AuthStatus;
-  devMode: boolean;
+  /** true when VITE_SUPABASE_* env vars are missing — show a setup screen. */
+  unconfigured: boolean;
   user: { id: string; username: string } | null;
   /** true once the account's profile has been loaded into the store. */
   hydrated: boolean;
 }
 
-const devMode = !isSupabaseConfigured();
-
 let auth: AuthState = {
-  status: devMode ? 'signed-in' : 'unknown',
-  devMode,
+  status: isSupabaseConfigured() ? 'unknown' : 'signed-out',
+  unconfigured: !isSupabaseConfigured(),
   user: null,
-  hydrated: devMode,
+  hydrated: false,
 };
 
 let currentSession: Session | null = null;
@@ -59,7 +56,7 @@ export function useAuth(): AuthState {
   return useSyncExternalStore(subscribeAuth, getAuth);
 }
 
-/** Access token for the WebSocket handshake (undefined in dev mode). */
+/** Access token for the WebSocket handshake — the server requires it. */
 export function getAccessToken(): string | null {
   return currentSession?.access_token ?? null;
 }
@@ -122,7 +119,7 @@ async function hydrateWithSession(session: Session): Promise<void> {
   if (epoch !== hydrateEpoch) return;
   auth = {
     status: 'signed-in',
-    devMode: false,
+    unconfigured: false,
     user: { id: userId, username: row ? row.username : metaName || 'Pilot' },
     hydrated: true,
   };
@@ -131,14 +128,18 @@ async function hydrateWithSession(session: Session): Promise<void> {
 
 async function init(): Promise<void> {
   const sb = getSupabase();
-  if (!sb) return;
+  if (!sb) {
+    auth = { status: 'signed-out', unconfigured: true, user: null, hydrated: false };
+    emit();
+    return;
+  }
   const { data } = await sb.auth.getSession();
   if (data.session) {
     auth = { ...auth, status: 'signed-in' };
     emit();
     await hydrateWithSession(data.session);
   } else {
-    auth = { status: 'signed-out', devMode: false, user: null, hydrated: false };
+    auth = { status: 'signed-out', unconfigured: false, user: null, hydrated: false };
     emit();
   }
   sb.auth.onAuthStateChange((_event, session) => {
@@ -153,7 +154,7 @@ async function init(): Promise<void> {
       }
       if (saveTimer) clearTimeout(saveTimer);
       currentSession = null;
-      auth = { status: 'signed-out', devMode: false, user: null, hydrated: false };
+      auth = { status: 'signed-out', unconfigured: false, user: null, hydrated: false };
       emit();
     }
   });
@@ -166,7 +167,7 @@ void init();
 
 export async function signIn(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase();
-  if (!sb) return { ok: false, error: 'Accounts are not configured (dev mode).' };
+  if (!sb) return { ok: false, error: 'Supabase is not configured — add your keys to client/.env.' };
   const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
   if (error) return { ok: false, error: error.message };
   // onAuthStateChange(SIGNED_IN) hydrates the profile — the app shows a
@@ -176,7 +177,7 @@ export async function signIn(email: string, password: string): Promise<{ ok: boo
 
 export async function signUp(username: string, email: string, password: string): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase();
-  if (!sb) return { ok: false, error: 'Accounts are not configured (dev mode).' };
+  if (!sb) return { ok: false, error: 'Supabase is not configured — add your keys to client/.env.' };
   if (username.trim().length < 3) return { ok: false, error: 'Username must be at least 3 characters.' };
   const { data, error } = await sb.auth.signUp({
     email: email.trim(),
@@ -207,8 +208,6 @@ export async function signOut(): Promise<void> {
   }
   if (saveTimer) clearTimeout(saveTimer);
   currentSession = null;
-  auth = { status: 'signed-out', devMode: false, user: null, hydrated: false };
+  auth = { status: 'signed-out', unconfigured: false, user: null, hydrated: false };
   emit();
 }
-
-

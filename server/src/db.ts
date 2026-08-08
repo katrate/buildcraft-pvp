@@ -3,10 +3,10 @@ import { loadEnv } from './env';
 
 // ------------------------------------------------------------
 // Server-side Supabase (service role — never exposed to the client).
-// Everything here is optional: without SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-// the game runs in dev mode exactly as before (no identity verification, no
-// DB ledger). With them, the WebSocket handshake verifies the client's access
-// token and finished matches are recorded to the matches ledger.
+// Required: with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set, the WebSocket
+// handshake verifies the client's access token and finished matches are
+// recorded to the matches ledger. Without them every connection is rejected
+// (accounts are mandatory — see server/src/index.ts).
 // ------------------------------------------------------------
 
 loadEnv();

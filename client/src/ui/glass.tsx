@@ -546,18 +546,6 @@ export const UpgradeRow = styled.div`
   &:last-child { border-bottom: none; }
 `;
 
-export const DevZone = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(255,255,255,0.18);
-  max-width: 460px;
-  width: 100%;
-  justify-content: center;
-`;
-
 // ------------------------------------------------------------
 // Overlays / modals
 // ------------------------------------------------------------

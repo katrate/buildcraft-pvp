@@ -29,7 +29,7 @@ npm run dev
 | Initiative upgrade | Coin-bought in the Build editor, cost creeps per level; decides who acts first and is **not normalized** in unranked |
 | Unranked PvP | 1v1, 2v2, 5v5 via server matchmaking; teams fill with real players first, bots as a fallback; stats normalized (except initiative upgrade) |
 | Ranked PvP | Unlocks at Level 20: **two ladders — 1v1 (solo) and 5v5 (parties)** — each with its **own rank** and its **own stat-upgrade pool**; Iron→Supreme ELO ladder (8 bands), upgrades capped by that ladder's rank, no bots — every slot is a real player within your rank window |
-| Accounts & friends | **Supabase accounts** (email/password login — optional locally, required for the live game), profiles/coins/inventory/presets/ranks stored in Postgres, **friend requests by username** (no online requirement), parties of up to 5 with ready-check, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
+| Accounts & friends | **Supabase accounts** (email/password login — **mandatory**, no anonymous mode), profiles/coins/inventory/presets/ranks stored in Postgres, **friend requests by username** (no online requirement), parties of up to 5 with ready-check, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
 | Progression | Endless XP curve — no level cap, XP requirements grow every level, coins, record |
 | Combat | Server-authoritative: initiative, rounds/turns, **per-match ability uses** (no energy), DoTs, shields, buffs/debuffs, stuns, counter/thorns, ultimates charging +1/round and +1/kill (5 to fire) |
 
@@ -41,13 +41,14 @@ npm run dev
 /shared  Pure TypeScript: types, game data, combat engine, progression, rewards
 ```
 
-- **Supabase accounts (optional in dev, required in production).** Without env vars the
-  game runs in dev mode — player data lives in `localStorage` per browser. With them,
-  **login is mandatory**: the profile row hydrates into the client store on sign-in and
-  every change is debounce-synced back to Postgres, so coins/builds/ranks follow the
-  account across browsers. The server verifies the access token (JWT) on the WebSocket
-  handshake and pins the socket to the authenticated user id, and writes finished
-  matches to the `matches` ledger via the service role key.
+- **Supabase accounts are mandatory** — there is no anonymous/dev mode. The client
+  requires the `client/.env` keys and shows a login screen until a session exists; the
+  profile row hydrates into the client store on sign-in and every change is
+  debounce-synced back to Postgres, so coins/builds/ranks follow the account across
+  browsers. The server **requires a valid access token (JWT) on every WebSocket
+  handshake** — it verifies it and pins the socket to the authenticated user id — and
+  writes finished matches to the `matches` ledger via the service role key. Without the
+  service role key in `.env` the server rejects all connections.
 - **The server is authoritative over matches.** Clients send intentions
   (`USE_ABILITY fire_bolt on p2`); the server validates turns, ability uses, and
   computes all damage/results (see `shared/src/engine/combat.ts`).
@@ -104,8 +105,7 @@ npm run build        # production client build
   are rows in Postgres (`friends` + `friend_requests` tables with RLS). Send a request
   by **username** — the other player doesn't need to be online; they accept it next time
   they sign in. Request flows: incoming (Accept / Decline) and outgoing (Cancel), plus
-  Remove. In dev mode there are no accounts, so the old by-name lookup (must be online)
-  is unavailable.
+  Remove.
 - Invite a friend → they get a live invite card → Join/Decline. (Party **invites** still
   need the friend online — parties are live sessions; the server tells you if not.)
 - **Parties are server-side, session-scoped**: a party is created by a leader, members
@@ -223,31 +223,24 @@ VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-Startup behavior:
+Startup behavior (no dev mode — accounts are required):
 
-- **Client** — with `VITE_*` set, the app **requires a login screen** (sign in / create
-  account with username). After sign-in it hydrates the profile from Postgres and
-  debounce-saves every change back (800ms, fire-and-forget). Without them, the old
-  dev-mode (localStorage) experience runs — nothing breaks.
-- **Server** — with `SUPABASE_*` set, the WebSocket handshake verifies the client's
-  access token (`hello.accessToken` → `auth.getUser`) and binds the socket to the
-  authenticated user id; expired tokens are rejected. Finished matches are written to
-  `matches` / `match_participants`. Without them, the server runs in dev fallback (any
-  id, no ledger).
-
-## Dev shortcuts
-
-- The main menu has a **“⚡ Instantly Unlock Ranked”** dev button that jumps you to
-  the ranked-unlock threshold (Level 20) immediately — levels are otherwise endless
-  and keep rising (so you can test ranked stat upgrades and the ranked queue).
-- Reset your local progress (coins/inventory/level) from the Profile screen.
+- **Client** — the app shows a **login screen** (sign in / create account with
+  username). After sign-in it hydrates the profile from Postgres and debounce-saves
+  every change back (800ms, fire-and-forget). If `client/.env` is missing, the app
+  shows a “Supabase is not configured” setup screen instead of running anonymously.
+- **Server** — every WebSocket handshake must present a valid access token
+  (`hello.accessToken` → `auth.getUser`); the socket is bound to the authenticated
+  user id and expired/missing tokens are rejected. Finished matches are written to
+  `matches` / `match_participants`. If `.env` lacks the service role key, the server
+  logs a startup warning and rejects connections.
 
 ## Testing multiplayer locally
 
 1. Start `npm run dev`.
 2. Open http://localhost:5173 in **two different browsers** (or two devices on the same
    LAN using the host's IP).
-3. Enter a pilot name in each, join Unranked → 1v1, and fight.
+3. Sign in (or create an account) in each browser, join Unranked → 1v1, and fight.
 4. For 2v2 / 5v5: fewer real players are fine. The server **keeps searching for real
    players** — every new player that joins the queue resets the search window
    (default ~15s, `MATCHMAKING_BOT_FILL_WAIT_MS` in `shared/src/constants.ts`). Only

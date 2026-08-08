@@ -1,7 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import {
   INITIATIVE_UPGRADE,
-  RANKED_UNLOCK_LEVEL,
   RANKED_UPGRADE,
   STARTER,
 } from '../../../shared/src/constants';
@@ -125,7 +124,7 @@ const listeners = new Set<() => void>();
 
 // ------------------------------------------------------------
 // Persistence hooks — Supabase sync registers here (auth.ts). Every change
-// is still written to localStorage first (offline cache + dev mode), then
+// is still written to localStorage first (offline cache), then
 // each hook is notified so the DB copy can catch up. Hooks are fire-and-
 // forget: the game never waits on the network.
 // ------------------------------------------------------------
@@ -341,14 +340,6 @@ export function applyRankDelta(delta: number, format: RankedFormat): PlayerRank 
   return state.ranks[format];
 }
 
-// Dev tool: jump straight to the ranked-unlock threshold (levels themselves
-// are endless — this only reaches the unlock, it is not a cap). Never lowers
-// an already-higher level, so it is safe to click at any time.
-export function setDevUnlockRanked(): void {
-  state = { ...state, level: Math.max(state.level, RANKED_UNLOCK_LEVEL), xp: state.xp };
-  emit();
-}
-
 export function currentRank(format: RankedFormat): PlayerRank {
   return state.ranks[format];
 }
@@ -370,10 +361,5 @@ export function addFriend(friend: Friend): boolean {
 
 export function removeFriend(playerId: string): void {
   state = { ...state, friends: state.friends.filter((f) => f.playerId !== playerId) };
-  emit();
-}
-
-export function resetAll(): void {
-  state = defaultState();
   emit();
 }

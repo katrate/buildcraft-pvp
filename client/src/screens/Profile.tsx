@@ -1,4 +1,4 @@
-import { usePlayer, getActivePreset, resetAll } from '../state/store';
+import { usePlayer, getActivePreset } from '../state/store';
 import { progressToNextLevel, isRankedUnlocked, rankForRating, rankStatusText, maxRankedUpgradeFor } from '../../../shared/src/progression';
 import { tierForRating, ratingToNextBand } from '../../../shared/src/rating';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
@@ -154,18 +154,6 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
         </Panel>
       </TwoCol>
 
-      <div style={{ marginTop: 20 }}>
-        <Button
-          variant="danger"
-          style={{ background: 'transparent' }}
-          onClick={() => {
-            resetAll();
-            props.onNavigate('menu');
-          }}
-        >
-          Reset local progress (dev tool)
-        </Button>
-      </div>
     </Screen>
   );
 }

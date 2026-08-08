@@ -1,13 +1,11 @@
-import { usePlayer, setDevUnlockRanked } from '../state/store';
+import { usePlayer } from '../state/store';
 import { useWsStatus } from '../services/ws';
 import { isRankedUnlocked, progressToNextLevel, rankForRating } from '../../../shared/src/progression';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
 import { RankBar } from '../components/RankBar';
 import { I, type IconName } from '../ui/icons';
 import {
-  Button,
   Chip,
-  DevZone,
   Fill,
   HeroAccent,
   HeroTagline,
@@ -88,15 +86,6 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
           <Tiny style={{ letterSpacing: '0.1em' }}>
             LV {player.level} · RANKED {rankLine}
           </Tiny>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={setDevUnlockRanked}
-            title="Dev tool — instantly reach the ranked-unlock threshold (never lowers your level)"
-          >
-            <I n="lightningBolt" /> Instantly Unlock Ranked
-            {!isRankedUnlocked(player.level) ? ` (Level ${RANKED_UNLOCK_LEVEL})` : <><I n="check" /> unlocked</>}
-          </Button>
         </div>
       </NavRail>
 
@@ -171,10 +160,6 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             ))}
           </div>
         )}
-
-        <DevZone>
-          <Tiny>Dev tools</Tiny>
-        </DevZone>
       </MenuMain>
     </MenuShell>
   );

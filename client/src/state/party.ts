@@ -56,23 +56,22 @@ subscribeWsStatus(() => {
     const p = getState();
     if (!p.playerId) return;
     const a = getAuth();
-    // Only announce ourselves when there is a real identity to announce:
-    // dev mode (local id) or a hydrated signed-in account. While signed out in
-    // account mode the server rejects token-less hellos — don't spam it.
-    if (!a.devMode && !(a.status === 'signed-in' && a.hydrated)) return;
-    // With accounts the server verifies this token and binds the socket to
-    // the authenticated user id (dev mode sends no token — server fallback).
+    // Only announce ourselves once the account is hydrated — while signed out
+    // the server rejects token-less hellos, so don't spam it.
+    if (!(a.status === 'signed-in' && a.hydrated)) return;
+    // The server verifies this token and binds the socket to the
+    // authenticated user id.
     sendMessage({ type: 'hello', playerId: p.playerId, name: p.name, accessToken: getAccessToken() ?? undefined });
   }
   wasConnected = nowConnected;
 });
 
-// The socket may connect BEFORE the user signs in (account mode). When the
-// login completes, announce ourselves so the server knows who we are.
+// The socket may connect BEFORE the user signs in. When the login completes,
+// announce ourselves so the server knows who we are.
 let wasAuthed = false;
 subscribeAuth(() => {
   const a = getAuth();
-  const authedNow = a.devMode || (a.status === 'signed-in' && a.hydrated);
+  const authedNow = a.status === 'signed-in' && a.hydrated;
   if (authedNow && !wasAuthed && getWsStatus() === 'connected') {
     const p = getState();
     if (p.playerId) {

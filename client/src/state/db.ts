@@ -1,4 +1,4 @@
-import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
+import { getSupabase } from '../lib/supabase';
 import { defaultState } from './store';
 import type { Friend, PlayerState } from '../../../shared/src/types';
 
@@ -159,7 +159,7 @@ export interface SendRequestResult {
 /** Find a user by username and file a pending friend request. */
 export async function sendFriendRequestByUsername(username: string, userId: string): Promise<SendRequestResult> {
   const sb = getSupabase();
-  if (!sb) return { ok: false, error: 'Accounts are not configured (dev mode).' };
+  if (!sb) return { ok: false, error: 'Supabase is not configured — add your keys to client/.env.' };
   const clean = username.trim();
   if (!clean) return { ok: false, error: 'Enter a username.' };
   const { data: found, error: findErr } = await sb.rpc('find_user_by_username', { search: clean });
@@ -223,5 +223,3 @@ export async function removeFriendById(friendId: string): Promise<boolean> {
   }
   return true;
 }
-
-export { isSupabaseConfigured };

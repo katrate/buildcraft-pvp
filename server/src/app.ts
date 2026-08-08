@@ -7,7 +7,7 @@ import { MatchmakingQueue } from './queue';
 import { PartyManager } from './party';
 import { CustomLobbyManager } from './custom';
 import { validatePreset } from './validation';
-import { supabaseConfigured, verifySupabaseToken } from './db';
+import { verifySupabaseToken } from './db';
 
 export interface GameServer {
   httpServer: http.Server;
@@ -20,7 +20,10 @@ export interface GameServer {
   close: () => Promise<void>;
 }
 
-export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFillWaitMs?: number; rankWidenAfterMs?: number; matchCountdownMs?: number }): Promise<GameServer> {
+export function startGameServer(
+  port = 8787,
+  opts?: { botThinkMs?: number; botFillWaitMs?: number; rankWidenAfterMs?: number; matchCountdownMs?: number; allowUnauthenticated?: boolean },
+): Promise<GameServer> {
   const matches = new MatchManager(opts?.botThinkMs ?? 1100, opts?.matchCountdownMs);
 
   const httpServer = http.createServer((req, res) => {
@@ -40,7 +43,7 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
   // playerId -> active socket
   const sockets = new Map<string, WebSocket>();
   // socket -> verified auth user id (set by `hello` when a valid Supabase
-  // access token is presented; absent in dev mode / before hello)
+  // access token is presented; absent in the test harness / before hello)
   const verifiedBySocket = new WeakMap<WebSocket, string>();
 
   wss.on('connection', (ws) => {
@@ -66,29 +69,39 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
         msg = { ...msg, playerId: verified } as ClientMessage;
       }
 
+      // Strict mode: every identity-bearing message (anything except the hello
+      // handshake itself) must come from a verified socket. The test harness
+      // (allowUnauthenticated) is the only exemption.
+      if (!opts?.allowUnauthenticated && msg.type !== 'hello' && 'playerId' in msg && !verified) {
+        send({ type: 'error', message: 'Not signed in — sign in to play.' });
+        return;
+      }
+
       switch (msg.type) {
         case 'hello': {
-          if (supabaseConfigured()) {
-            // Accounts are enforced: EVERY socket must present a valid token.
-            // No token, or a token that fails verification, is rejected — a
-            // client can never claim another user's identity.
-            if (!msg.accessToken) {
-              send({ type: 'error', message: 'Not signed in — sign in to play.' });
-              break;
-            }
-            const verifiedId = await verifySupabaseToken(msg.accessToken);
-            if (!verifiedId) {
-              send({ type: 'error', message: 'Session expired — please sign in again.' });
-              break;
-            }
-            boundPlayerId = verifiedId;
-            verifiedBySocket.set(ws, verifiedId);
-            partyManager.register(verifiedId, msg.name.slice(0, 24), ws);
+          // Test-harness only (server/src/integration.test.ts): no identity
+          // enforcement. Never enabled by the real server entry point.
+          if (opts?.allowUnauthenticated) {
+            boundPlayerId = msg.playerId;
+            partyManager.register(msg.playerId, msg.name.slice(0, 24), ws);
             break;
           }
-          // Dev fallback: no Supabase on this server — trust the client id.
-          boundPlayerId = msg.playerId;
-          partyManager.register(msg.playerId, msg.name.slice(0, 24), ws);
+          // Real mode — accounts are enforced: EVERY socket must present a
+          // valid Supabase access token. No token, or a token that fails
+          // verification, is rejected — a client can never claim another
+          // user's identity.
+          if (!msg.accessToken) {
+            send({ type: 'error', message: 'Not signed in — sign in to play.' });
+            break;
+          }
+          const verifiedId = await verifySupabaseToken(msg.accessToken);
+          if (!verifiedId) {
+            send({ type: 'error', message: 'Session expired — please sign in again.' });
+            break;
+          }
+          boundPlayerId = verifiedId;
+          verifiedBySocket.set(ws, verifiedId);
+          partyManager.register(verifiedId, msg.name.slice(0, 24), ws);
           break;
         }
         case 'create_party': {
