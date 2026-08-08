@@ -39,6 +39,7 @@ import heartMultiple from '@iconify-icons/mdi/heart-multiple';
 import heartPulse from '@iconify-icons/mdi/heart-pulse';
 import lightningBolt from '@iconify-icons/mdi/lightning-bolt';
 import lock from '@iconify-icons/mdi/lock';
+import logout from '@iconify-icons/mdi/logout';
 import magnify from '@iconify-icons/mdi/magnify';
 import meteor from '@iconify-icons/mdi/meteor';
 import necklace from '@iconify-icons/mdi/necklace';
@@ -103,6 +104,7 @@ export const ICONS = {
   heartPulse,
   lightningBolt,
   lock,
+  logout,
   magnify,
   meteor,
   necklace,

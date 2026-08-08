@@ -723,6 +723,35 @@ export const NavIcon = styled.span`
   flex-shrink: 0;
 `;
 
+// Player identity footer for the nav rail (name, level, sign out).
+export const RailUser = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.03);
+  min-width: 0;
+`;
+
+export const Avatar = styled.div`
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  border: 2px solid rgba(255,255,255,0.25);
+  text-transform: uppercase;
+`;
+
 export const MenuMain = styled.div`
   flex: 1;
   min-width: 0;

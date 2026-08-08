@@ -5,7 +5,6 @@ import { Play } from './screens/Play';
 import { Build } from './screens/Build';
 import { Inventory } from './screens/Inventory';
 import { Store } from './screens/Store';
-import { Profile } from './screens/Profile';
 import { CombatPractice } from './screens/CombatPractice';
 import { CombatOnline, type OnlineMatchInfo } from './screens/CombatOnline';
 import { MatchSummary, type MatchSummaryData } from './screens/MatchSummary';
@@ -239,7 +238,6 @@ export function App() {
       {screen === 'build' && <Build onBack={() => navigate('menu')} />}
       {screen === 'inventory' && <Inventory onEditBuild={() => navigate('build')} onBack={() => navigate('menu')} />}
       {screen === 'store' && <Store onBack={() => navigate('menu')} />}
-      {screen === 'profile' && <Profile onNavigate={navigate} />}
       {screen === 'combat-practice' && <CombatPractice onExit={() => navigate('play')} />}
       {screen === 'countdown' && countdown && (
         <CountdownScreen
