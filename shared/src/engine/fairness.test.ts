@@ -52,7 +52,7 @@ describe('fairness: bots/NPCs are tuned to the new damage scale', () => {
     }
   });
 
-  it('a starter build can win practice — the NPC is tuned to be beatable', () => {
+  it('practice is a mirror: a build wins its own copy when it acts first', () => {
     const player = playerCombatantInput({
       playerId: 'u1', name: 'Starter',
       preset: preset({ active1: 'fire_bolt', weapon: 'iron_sword' }),

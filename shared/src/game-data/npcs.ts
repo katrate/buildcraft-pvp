@@ -34,14 +34,9 @@ export const NPC_TEMPLATES: Record<string, NpcTemplate> = {
       slots: { core: 'stone_core', active1: 'berserk', active2: 'shield', passive1: 'thorns', passive2: 'vitality', weapon: 'war_hammer', armor: 'heavy_armor', utility: 'life_amulet', ultimate: null },
     },
   },
-  // The PRACTICE NPC (see engine/practice.ts PRACTICE_NPC_ID). Tuned to the
-  // new damage scale as a fair starter-underdog: it fights at BASE stats with
-  // only a fire bolt (no gear, no burst stacking), so a starter build (fire
-  // bolt + iron sword) can always win the mirror by a small margin (verified:
-  // player wins at 5 HP in 7 rounds with both sides on the bot AI). Practice
-  // is a sandbox — the NPC should teach, not stomp. Deliberately NO shield:
-  // the bot AI shields whenever it drops below 40% HP, and two 45-absorb
-  // shields stall the fight long enough for it to win a starter mirror.
+  // NOTE: practice mode no longer uses a fixed NPC — it fights a MIRROR of
+  // your own build (see engine/practice.ts), so this template is only kept
+  // as a generic NPC definition.
   warlock: {
     id: 'warlock', name: 'Warlock', shape: 'square', color: '#8f6fd8',
     preset: {
