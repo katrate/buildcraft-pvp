@@ -149,8 +149,8 @@ describe('fairness: PvP modes use the right stat pools', () => {
     const diamond = computePvpBuild(P, 'custom', { customNorm: 'diamond' });
     const standard = computePvpBuild(P, 'custom', { customNorm: 'standard' });
     const gold = computePvpBuild(P, 'custom', { customNorm: 'gold' });
-    // Diamond (tier 4, ceiling 20) > Gold (tier 2, ceiling 12) > Bronze
-    // (tier 0, ceiling 5) > standard (no budget at all). Attack scales with
+    // Diamond (tier 5, ceiling 18) > Gold (tier 3, ceiling 12) > Bronze
+    // (tier 1, ceiling 6) > standard (no budget at all). Attack scales with
     // the budget; HP never does.
     expect(diamond.stats.attack).toBeGreaterThan(gold.stats.attack);
     expect(gold.stats.attack).toBeGreaterThan(bronze.stats.attack);

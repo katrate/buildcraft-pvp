@@ -19,11 +19,14 @@ import { Button, Chip, Col, Divider, Input, Panel, PanelTitle, P, Row, Tiny, Upg
 
 const NORMS: { value: CustomNorm; label: string; hint: string }[] = [
   { value: 'standard', label: 'Standard (unranked)', hint: 'Normalized like unranked — no stat budgets' },
+  { value: 'iron', label: 'Iron budget', hint: 'Normalized to Iron-level stats' },
   { value: 'bronze', label: 'Bronze budget', hint: 'Normalized to Bronze-level stats' },
   { value: 'silver', label: 'Silver budget', hint: 'Normalized to Silver-level stats' },
   { value: 'gold', label: 'Gold budget', hint: 'Normalized to Gold-level stats' },
   { value: 'platinum', label: 'Platinum budget', hint: 'Normalized to Platinum-level stats' },
   { value: 'diamond', label: 'Diamond budget', hint: 'Normalized to Diamond-level stats' },
+  { value: 'divine', label: 'Divine budget', hint: 'Normalized to Divine-level stats' },
+  { value: 'supreme', label: 'Supreme budget', hint: 'Normalized to Supreme-level stats' },
 ];
 
 const NORM_LABEL: Record<CustomNorm, string> = Object.fromEntries(

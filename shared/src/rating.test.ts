@@ -69,36 +69,42 @@ describe('ratingDelta', () => {
 });
 
 describe('rating bands', () => {
-  it('maps ratings to tiers', () => {
-    expect(tierForRating(1000)).toBe(0); // bronze
-    expect(tierForRating(1100)).toBe(1); // silver
-    expect(tierForRating(1299)).toBe(1);
-    expect(tierForRating(1300)).toBe(2); // gold
-    expect(tierForRating(1500)).toBe(3); // platinum
-    expect(tierForRating(1700)).toBe(4); // diamond
+  it('maps ratings to tiers across all 8 bands', () => {
+    expect(tierForRating(500)).toBe(0); // iron
+    expect(tierForRating(1000)).toBe(1); // bronze
+    expect(tierForRating(1100)).toBe(1);
+    expect(tierForRating(1150)).toBe(2); // silver
+    expect(tierForRating(1299)).toBe(2);
+    expect(tierForRating(1300)).toBe(3); // gold
+    expect(tierForRating(1450)).toBe(4); // platinum
+    expect(tierForRating(1600)).toBe(5); // diamond
+    expect(tierForRating(1750)).toBe(6); // divine
+    expect(tierForRating(1900)).toBe(7); // supreme
   });
 
   it('bandForRating returns the right band with upgrade ceiling', () => {
     expect(bandForRating(1200).name).toBe('Silver');
-    expect(bandForRating(1200).maxUpgradeLevel).toBe(8);
-    expect(bandForRating(1800).maxUpgradeLevel).toBe(20);
+    expect(bandForRating(1200).maxUpgradeLevel).toBe(9);
+    expect(bandForRating(1800).maxUpgradeLevel).toBe(21); // divine
+    expect(bandForRating(2000).maxUpgradeLevel).toBe(24); // supreme
   });
 
   it('ratingToNextBand is null at the top and positive otherwise', () => {
-    expect(ratingToNextBand(1000)).toBe(1100);
-    expect(ratingToNextBand(1699)).toBe(1700);
+    expect(ratingToNextBand(1000)).toBe(1150);
+    expect(ratingToNextBand(1699)).toBe(1750);
     expect(ratingToNextBand(2000)).toBeNull();
   });
 
   it('progressInBand is bounded 0..1', () => {
     expect(progressInBand(0)).toBe(0);
-    // bronze spans 0-1100, so 1000 is ~91% of the way through it
-    expect(progressInBand(1000)).toBeCloseTo(1000 / 1100, 3);
-    expect(progressInBand(1099)).toBeCloseTo(1099 / 1100, 3);
-    expect(progressInBand(1800)).toBe(1); // diamond has no next band
+    // iron spans 0-999, so 500 is halfway through it
+    expect(progressInBand(500)).toBeCloseTo(0.5, 3);
+    expect(progressInBand(1125)).toBeCloseTo(125 / 150, 3); // bronze toward silver
+    expect(progressInBand(2000)).toBe(1); // supreme has no next band
   });
 
-  it('start rating is bronze with a sane initial delta path', () => {
-    expect(START_RATING).toBe(1000);
+  it('start rating is iron with a sane initial delta path', () => {
+    expect(START_RATING).toBe(850);
+    expect(tierForRating(START_RATING)).toBe(0);
   });
 });

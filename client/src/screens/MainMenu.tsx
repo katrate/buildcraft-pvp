@@ -2,6 +2,7 @@ import { usePlayer, setDevUnlockRanked } from '../state/store';
 import { useWsStatus } from '../services/ws';
 import { isRankedUnlocked, progressToNextLevel, rankForRating } from '../../../shared/src/progression';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
+import { RankBar } from '../components/RankBar';
 import {
   Button,
   Chip,
@@ -144,6 +145,21 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             {isRankedUnlocked(player.level) ? rankLine : 'keep fighting to unlock ranked'}
           </Tiny>
         </div>
+
+        {/* Rank (RR) progress — one bar per ladder, same style as the XP bar */}
+        {isRankedUnlocked(player.level) && (
+          <div style={{ maxWidth: 560, width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Tiny style={{ letterSpacing: '0.16em', color: 'var(--text)' }}>RANK PROGRESS</Tiny>
+              <Tiny>climb each ladder</Tiny>
+            </div>
+            {(['1v1', '5v5'] as const).map((f) => (
+              <div key={f} style={{ marginBottom: 10 }}>
+                <RankBar format={f} rank={player.ranks[f]} />
+              </div>
+            ))}
+          </div>
+        )}
 
         <DevZone>
           <Tiny>Dev tools</Tiny>

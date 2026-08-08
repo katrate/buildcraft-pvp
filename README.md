@@ -28,7 +28,7 @@ npm run dev
 | Custom matches | Friend lobbies, 1v1→5v5 with **any uneven split** (2v5 allowed), no bots, fully normalized; the leader picks the norm level (standard or a rank budget) |
 | Initiative upgrade | Coin-bought in the Build editor, cost creeps per level; decides who acts first and is **not normalized** in unranked |
 | Unranked PvP | 1v1, 2v2, 5v5 via server matchmaking; teams fill with real players first, bots as a fallback; stats normalized (except initiative upgrade) |
-| Ranked PvP | Unlocks at Level 20: **two ladders — 1v1 (solo) and 5v5 (parties)** — each with its **own rank** and its **own stat-upgrade pool**; Bronze→Diamond ELO ladder, upgrades capped by that ladder's rank, no bots — every slot is a real player within your rank window |
+| Ranked PvP | Unlocks at Level 20: **two ladders — 1v1 (solo) and 5v5 (parties)** — each with its **own rank** and its **own stat-upgrade pool**; Iron→Supreme ELO ladder (8 bands), upgrades capped by that ladder's rank, no bots — every slot is a real player within your rank window |
 | Party & friends | Friends list (add by online pilot name), parties of up to 5, ready-check before queueing, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
 | Progression | Endless XP curve — no level cap, XP requirements grow every level, coins, record |
 | Combat | Server-authoritative: initiative, rounds/turns, **per-match ability uses** (no energy), DoTs, shields, buffs/debuffs, stuns, counter/thorns, ultimates charging +1/round and +1/kill (5 to fire) |
@@ -57,10 +57,11 @@ npm run dev
 - **Unranked normalization** (`shared/src/engine/normalize.ts`) re-bases builds toward a
   reference level so grinding doesn't decide matches — builds do. The coin-bought
   Initiative upgrade is applied **after** normalization on purpose.
-- **Ranked ladders** (`shared/src/progression.ts`): Bronze → Silver → Gold → Platinum →
-  Diamond. **1v1 and 5v5 are independent ladders** — separate rating, rank band, games,
-  and their own coin-bought stat-upgrade pool (each pool capped by that ladder's rank:
-  5/8/12/16/20 levels per stat). Ranked matches never fill with bots — real players only.
+- **Ranked ladders** (`shared/src/progression.ts`): Iron → Bronze → Silver → Gold →
+  Platinum → Diamond → Divine → Supreme. **1v1 and 5v5 are independent ladders** —
+  separate rating, rank band, games, and their own coin-bought stat-upgrade pool (each
+  pool capped by that ladder's rank: 3/6/9/12/15/18/21/24 levels per stat). Ranked
+  matches never fill with bots — real players only.
 - **Data-driven content:** powers/gear/effects/NPCs are plain definitions in
   `shared/src/game-data/`. Add content by appending definitions — the engine interprets
   them generically.
@@ -82,8 +83,8 @@ npm run build        # production client build
   friends by name, then assigns everyone to **Team A / Team B**. Any split is allowed:
   a 2v5 is a perfectly valid match.
 - **All stats are normalized.** `Standard` = unranked normalization; picking a rank
-  (Bronze→Diamond) normalizes everyone to that rank's **stat budget** (its upgrade
-  ceiling applied to the normalized base) — so a Bronze lobby and a Diamond lobby play
+  (Iron→Supreme) normalizes everyone to that rank's **stat budget** (its upgrade
+  ceiling applied to the normalized base) — so an Iron lobby and a Supreme lobby play
   at different power levels, but everyone inside one lobby is equal. The initiative
   upgrade never applies in custom (fully normalized).
 - The leader starts the match; the usual **match-found countdown** applies, and the

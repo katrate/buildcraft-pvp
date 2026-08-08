@@ -76,11 +76,14 @@ export const RANKED_WINDOW_WIDEN_AFTER_MS = 60_000;
 export const RANKED_UNLOCK_LEVEL = 20;
 
 export const RANK_COLORS: Record<string, string> = {
+  iron: '#9aa0a6',
   bronze: '#cd7f32',
   silver: '#c0c0c0',
   gold: '#ffd700',
   platinum: '#7fd4e0',
   diamond: '#b9f2ff',
+  divine: '#c084fc',
+  supreme: '#ff4655',
 };
 
 // ------------------------------------------------------------
@@ -117,7 +120,7 @@ export const INITIATIVE_UPGRADE = {
 export const RANKED_UPGRADE = {
   baseCost: 1000,
   costStep: 250,
-  maxLevel: 20, // absolute per-stat cap (rank may cap lower)
+  maxLevel: 24, // absolute per-stat cap (rank may cap lower)
   // Only Attack and Defense get ranked modifiers — HP has none (200 base,
   // build elements only). Attack is added to every hit you land.
   gains: { attack: 1.5, defense: 1 } as Partial<Record<StatId, number>>,

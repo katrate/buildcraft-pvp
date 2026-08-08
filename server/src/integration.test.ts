@@ -90,7 +90,9 @@ class TestClient {
     if (id) this.send({ type: 'custom_team', playerId: this.playerId, lobbyId: id, targetId, team });
   }
 
-  setCustomNorm(norm: 'standard' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond'): void {
+  setCustomNorm(
+    norm: 'standard' | 'iron' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'divine' | 'supreme',
+  ): void {
     const id = this.lobbyId();
     if (id) this.send({ type: 'custom_norm', playerId: this.playerId, lobbyId: id, norm });
   }
@@ -395,8 +397,8 @@ describe('multiplayer integration', () => {
   it('ranked matchmaking respects the ±1 rank window (5v5)', async () => {
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 1500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw${i}`)); // rating 1400 -> Gold (tier 2)
-    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz${i}`)); // rating 1000 -> Bronze (tier 0)
+    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw${i}`)); // rating 1400 -> Gold (tier 3)
+    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz${i}`)); // rating 1000 -> Bronze (tier 1)
     await Promise.all([...golds, ...bronzes].map((c) => c.ready()));
     for (const c of golds) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1400 });
     for (const c of bronzes) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1000 });
@@ -404,7 +406,7 @@ describe('multiplayer integration', () => {
     await new Promise((r) => setTimeout(r, 2500));
     for (const c of [...golds, ...bronzes]) expect(c.messages.some((m) => m.type === 'match_start')).toBe(false);
 
-    // 5 Silver players (1200 -> tier 1) bridge the gap: the lower window
+    // 5 Silver players (1200 -> tier 2) bridge the gap: the lower window
     // (bronze+silver) wins the tie, so Bronze+Silver match and Gold waits.
     const silvers = Array.from({ length: 5 }, (_, i) => new TestClient(url, `silvr${i}`));
     await Promise.all(silvers.map((c) => c.ready()));
@@ -419,8 +421,8 @@ describe('multiplayer integration', () => {
     // Short widen threshold for the test (2.5s instead of 60s).
     server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, rankWidenAfterMs: 2500, matchCountdownMs: 5 });
     const url = `ws://127.0.0.1:${server.port}`;
-    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw2_${i}`)); // rating 1400 -> Gold (tier 2)
-    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz2_${i}`)); // rating 1000 -> Bronze (tier 0)
+    const golds = Array.from({ length: 5 }, (_, i) => new TestClient(url, `goldw2_${i}`)); // rating 1400 -> Gold (tier 3)
+    const bronzes = Array.from({ length: 5 }, (_, i) => new TestClient(url, `bronz2_${i}`)); // rating 1000 -> Bronze (tier 1)
     await Promise.all([...golds, ...bronzes].map((c) => c.ready()));
     for (const c of golds) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1400 });
     for (const c of bronzes) c.join(5, TEST_PRESET, { mode: 'ranked', rating: 1000 });

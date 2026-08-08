@@ -4,9 +4,10 @@ import type { PlayerResult } from './types';
 // Ranked rating (ELO-style).
 //
 // Every player has a hidden rating (starts at START_RATING).
-// Rank tiers are bands of rating:
-//   Bronze < 1100, Silver 1100-1299, Gold 1300-1499,
-//   Platinum 1500-1699, Diamond 1700+.
+// Rank tiers are bands of rating (8 tiers, 150 rating wide):
+//   Iron < 1000, Bronze 1000-1149, Silver 1150-1299, Gold 1300-1449,
+//   Platinum 1450-1599, Diamond 1600-1749, Divine 1750-1899,
+//   Supreme 1900+.
 //
 // RP gain/loss depends on the OPPONENT's strength:
 //   expected = 1 / (1 + 10^((opp - mine) / 400))
@@ -17,7 +18,9 @@ import type { PlayerResult } from './types';
 // weaker player loses a lot, and equal matches swing by K/2.
 // ------------------------------------------------------------
 
-export const START_RATING = 1000;
+// New players start inside the bottom band (Iron). Every ladder begins at the
+// same floor and climbs from there.
+export const START_RATING = 850;
 export const K_FACTOR = 32;
 
 export interface RatingBand {
@@ -29,11 +32,17 @@ export interface RatingBand {
 }
 
 export const RATING_BANDS: RatingBand[] = [
-  { id: 'bronze', name: 'Bronze', color: '#cd7f32', minRating: 0, maxUpgradeLevel: 5 },
-  { id: 'silver', name: 'Silver', color: '#c0c0c0', minRating: 1100, maxUpgradeLevel: 8 },
+  // Iron is the wide floor (0–999): every new account lands here at
+  // START_RATING 850, and a few losses cannot drop anyone out of it.
+  // Every band above is a fixed 150-rating-wide step to the next.
+  { id: 'iron', name: 'Iron', color: '#9aa0a6', minRating: 0, maxUpgradeLevel: 3 },
+  { id: 'bronze', name: 'Bronze', color: '#cd7f32', minRating: 1000, maxUpgradeLevel: 6 },
+  { id: 'silver', name: 'Silver', color: '#c0c0c0', minRating: 1150, maxUpgradeLevel: 9 },
   { id: 'gold', name: 'Gold', color: '#ffd700', minRating: 1300, maxUpgradeLevel: 12 },
-  { id: 'platinum', name: 'Platinum', color: '#7fd4e0', minRating: 1500, maxUpgradeLevel: 16 },
-  { id: 'diamond', name: 'Diamond', color: '#b9f2ff', minRating: 1700, maxUpgradeLevel: 20 },
+  { id: 'platinum', name: 'Platinum', color: '#7fd4e0', minRating: 1450, maxUpgradeLevel: 15 },
+  { id: 'diamond', name: 'Diamond', color: '#b9f2ff', minRating: 1600, maxUpgradeLevel: 18 },
+  { id: 'divine', name: 'Divine', color: '#c084fc', minRating: 1750, maxUpgradeLevel: 21 },
+  { id: 'supreme', name: 'Supreme', color: '#ff4655', minRating: 1900, maxUpgradeLevel: 24 },
 ];
 
 // Probability that `a` beats `b` (0..1). Symmetric: E(a,b) + E(b,a) = 1.

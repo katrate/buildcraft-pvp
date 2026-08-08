@@ -3,6 +3,7 @@ import { progressToNextLevel, isRankedUnlocked, rankForRating, rankStatusText, m
 import { tierForRating, ratingToNextBand } from '../../../shared/src/rating';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
 import { StatBar } from '../components/StatBar';
+import { RankBar } from '../components/RankBar';
 import { BackButton } from '../components/BackButton';
 import {
   Button,
@@ -93,13 +94,16 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
                       </span>
                     </div>
                     <Tiny>{rankStatusText(r)}</Tiny>
+                    <div style={{ margin: '8px 0' }}>
+                      <RankBar format={f.id} rank={r} />
+                    </div>
                     <Tiny style={{ display: 'block' }}>
                       {r.games} match{r.games === 1 ? '' : 'es'} · upgrade ceiling:{' '}
                       <b style={{ color: 'var(--text)' }}>{maxRankedUpgradeFor(tierForRating(r.rating))}</b> levels per stat
                     </Tiny>
-                    {ratingToNextBand(r.rating) !== null && (
-                      <Tiny style={{ display: 'block', marginTop: 4 }}>
-                        <b style={{ color: 'var(--accent)' }}>{ratingToNextBand(r.rating)! - r.rating} RP</b> to next rank
+                    {ratingToNextBand(r.rating) === null && (
+                      <Tiny style={{ display: 'block', marginTop: 4, color: band.color }}>
+                        ★ Top rank reached
                       </Tiny>
                     )}
                   </div>

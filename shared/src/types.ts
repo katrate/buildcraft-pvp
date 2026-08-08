@@ -379,7 +379,16 @@ export interface PartyMemberData extends PartyMemberInfo {
 // a rank name normalizes everyone to that rank's stat budget (ranked-upgrade
 // ceiling applied to the normalized base) so a Bronze lobby and a Diamond
 // lobby play at different power levels, but everyone in the same lobby is equal.
-export type CustomNorm = 'standard' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type CustomNorm =
+  | 'standard'
+  | 'iron'
+  | 'bronze'
+  | 'silver'
+  | 'gold'
+  | 'platinum'
+  | 'diamond'
+  | 'divine'
+  | 'supreme';
 
 export interface CustomMemberInfo {
   playerId: string;

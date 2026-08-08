@@ -15,7 +15,7 @@ import type { PartyManager } from './party';
 //   - 1v1 .. 5v5, any uneven split (a 2v5 is allowed)
 //   - no bots — every slot is a real player (up to 10)
 //   - stats are fully normalized; the leader picks the norm level
-//     (unranked 'standard' or a rank budget: bronze..diamond)
+//     (unranked 'standard' or a rank budget: iron..supreme)
 //   - the leader assigns players to Team A / Team B, then starts
 //
 // Presence is shared with the PartyManager (online registry + invites
@@ -33,7 +33,9 @@ interface CustomLobby {
   invites: Map<string, { fromId: string; fromName: string }>;
 }
 
-const NORMS: CustomNorm[] = ['standard', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+const NORMS: CustomNorm[] = [
+  'standard', 'iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'divine', 'supreme',
+];
 
 export class CustomLobbyManager {
   private lobbies = new Map<string, CustomLobby>();

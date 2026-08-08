@@ -43,7 +43,7 @@ describe('store migration → per-format ranked ladders', () => {
     const store = await import('./store');
     const s = store.getState();
     // Legacy rank (1350) carries to the 5v5 ladder; 1v1 is untouched and fresh.
-    expect(s.ranks['1v1']).toEqual({ rating: 1000, games: 0 });
+    expect(s.ranks['1v1']).toEqual({ rating: 850, games: 0 });
     expect(s.ranks['5v5']).toEqual({ rating: 1350, games: 12 });
     // Legacy upgrade pool carries to 5v5; 1v1 pool is fresh zeros.
     expect(s.rankedUpgrades['1v1']).toEqual({ attack: 0, defense: 0 });
@@ -59,8 +59,8 @@ describe('store migration → per-format ranked ladders', () => {
     });
     const store = await import('./store');
     const s = store.getState();
-    expect(s.ranks['5v5'].rating).toBe(1000 + 2 * 200); // tier 2 -> Gold-ish
-    expect(s.ranks['1v1'].rating).toBe(1000);
+    expect(s.ranks['5v5'].rating).toBe(850 + 2 * 200); // tier 2 -> ~1250 (Silver)
+    expect(s.ranks['1v1'].rating).toBe(850);
   });
 
   it('never wipes an already-migrated save on reload', async () => {
@@ -102,8 +102,8 @@ describe('store migration → per-format ranked ladders', () => {
     stubStorage({});
     const store = await import('./store');
     const s = store.getState();
-    expect(s.ranks['1v1']).toEqual({ rating: 1000, games: 0 });
-    expect(s.ranks['5v5']).toEqual({ rating: 1000, games: 0 });
+    expect(s.ranks['1v1']).toEqual({ rating: 850, games: 0 });
+    expect(s.ranks['5v5']).toEqual({ rating: 850, games: 0 });
     expect(s.rankedUpgrades['1v1']).toEqual({ attack: 0, defense: 0 });
     expect(s.rankedUpgrades['5v5']).toEqual({ attack: 0, defense: 0 });
   });
