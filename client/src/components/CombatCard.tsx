@@ -3,8 +3,8 @@ import { EFFECT_META } from '../../../shared/src/game-data/effects';
 import { maxUsesFor } from '../../../shared/src/engine/combat';
 import { ULTIMATE_CHARGE_MAX } from '../../../shared/src/constants';
 import { StatBar } from './StatBar';
-import { I } from '../ui/icons';
-import { CbEffects, CbInfo, CbName, CbSide, CombatantCard, FxBadge, Pip, Shape, UltPips } from '../ui/glass';
+import { I, type IconName } from '../ui/icons';
+import { CbEffects, CbName, CombatantCard, FxBadge, Shape, UltPips, Pip } from '../ui/glass';
 
 export function shapeVariant(c: Combatant): 'circle' | 'square' | 'triangle' | 'diamond' {
   // Bots/NPCs are squares/triangles/diamonds; player-controlled are circles.
@@ -15,6 +15,9 @@ export function shapeVariant(c: Combatant): 'circle' | 'square' | 'triangle' | '
   return 'square';
 }
 
+// Compact combatant tile for the no-scroll face-off arena. Shows the shape,
+// name, HP bar, active effects (Iconify icons — they pop when they land and
+// rest here until they expire), ability uses and ultimate charge.
 export function CombatCard(props: {
   c: Combatant;
   isAlly?: boolean;
@@ -26,7 +29,7 @@ export function CombatCard(props: {
   const dead = !c.alive;
   const shape = shapeVariant(c);
   const hpColor = c.hp / c.maxHp > 0.5 ? 'var(--good)' : c.hp / c.maxHp > 0.25 ? 'var(--warn)' : 'var(--bad)';
-  // Face-to-face: allies are always cyan (near side), enemies always red (far side).
+  // Face-off arena: allies are cyan (near side), enemies red (far side).
   const teamColor = isAlly ? '#2dd4ff' : '#ff4655';
 
   const totalUsesLeft = Object.values(c.usesLeft).reduce((a, b) => a + b, 0);
@@ -41,43 +44,39 @@ export function CombatCard(props: {
       onClick={targetMode && !dead ? () => onTarget?.(c.id) : undefined}
       title={dead ? `${c.name} — eliminated` : c.name}
     >
-      <Shape variant={shape} color={dead ? '#3a4354' : teamColor}>
+      <Shape variant={shape} color={dead ? '#3a4354' : teamColor} size={34}>
         <span>{dead ? <I n="close" /> : c.isBot ? '' : c.name[0]}</span>
       </Shape>
-      <CbInfo>
-        <CbName>{c.name}</CbName>
-        <CbEffects>
-          {c.effects.map((e) => (
-            <FxBadge
-              key={e.uid}
-              title={`${e.displayName}${e.duration > 0 ? ` (${e.duration} turns)` : ''}${e.amount ? ` — ${e.amount}` : ''}`}
-            >
-              {e.icon}
-              {e.amount ? Math.round(e.amount) : ''}
-            </FxBadge>
-          ))}
-          {totalUsesMax > 0 && !dead && (
-            <FxBadge title="Ability uses remaining this match">
-              <I n="refresh" /> {totalUsesLeft}/{totalUsesMax}
-            </FxBadge>
-          )}
-          {c.ultimate && (
-            <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX} title="Ultimate charge">
-              <I n="starFourPoints" /> {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
-            </FxBadge>
-          )}
-        </CbEffects>
-      </CbInfo>
-      <CbSide>
-        <StatBar label="HP" value={c.hp} max={c.maxHp} color={hpColor} height={8} />
-        {c.ultimate && (
-          <UltPips title="Ultimate charge (fills each round and on kills)">
-            {Array.from({ length: ULTIMATE_CHARGE_MAX }).map((_, i) => (
-              <Pip key={i} on={i < c.ultimate!.charge} />
-            ))}
-          </UltPips>
+      <CbName>{c.name}</CbName>
+      <StatBar value={c.hp} max={c.maxHp} color={hpColor} height={6} />
+      <CbEffects>
+        {c.effects.map((e) => (
+          <FxBadge
+            key={e.uid}
+            title={`${e.displayName}${e.duration > 0 ? ` (${e.duration} turns)` : ''}${e.amount ? ` — ${e.amount}` : ''}`}
+          >
+            <I n={(EFFECT_META[e.kind]?.icon ?? e.icon) as IconName} />
+            {e.amount ? Math.round(e.amount) : ''}
+          </FxBadge>
+        ))}
+        {totalUsesMax > 0 && !dead && (
+          <FxBadge title="Ability uses remaining this match">
+            <I n="refresh" /> {totalUsesLeft}/{totalUsesMax}
+          </FxBadge>
         )}
-      </CbSide>
+        {c.ultimate && (
+          <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX} title="Ultimate charge">
+            <I n="starFourPoints" /> {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
+          </FxBadge>
+        )}
+      </CbEffects>
+      {c.ultimate && (
+        <UltPips title="Ultimate charge (fills each round and on kills)">
+          {Array.from({ length: ULTIMATE_CHARGE_MAX }).map((_, i) => (
+            <Pip key={i} on={i < c.ultimate!.charge} />
+          ))}
+        </UltPips>
+      )}
     </CombatantCard>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { MatchState, PlayerAction, PowerDefinition } from '../../../shared/src/types';
+import type { EffectKind, MatchState, PlayerAction, PowerDefinition } from '../../../shared/src/types';
 import { computeDamage, effectiveDefense, getTurnActions, getTurnPotions } from '../../../shared/src/engine/combat';
+import { EFFECT_META } from '../../../shared/src/game-data/effects';
 import { CombatCard } from './CombatCard';
-import { I } from '../ui/icons';
+import { I, type IconName } from '../ui/icons';
 import {
   AbilityBar,
   AbilityButton,
@@ -13,20 +14,54 @@ import {
   Battlefield,
   Button,
   Chip,
-  LogBox,
-  LogLine,
-  Muted,
+  FloatPopup,
   PotionBar,
   PotionButton,
   Row,
   TeamCol,
   TeamHead,
+  TileWrap,
   Tiny,
 } from '../ui/glass';
 
 type Pending =
   | { type: 'USE_ABILITY'; powerId: string; rule: string }
   | { type: 'BASIC_ATTACK' };
+
+// A transient floating indicator over a combatant tile — damage numbers,
+// heals, effect icons, ultimate blasts, deaths. Rises and fades away.
+interface Popup {
+  id: number;
+  combatantId: string;
+  kind: 'dmg' | 'heal' | 'shield' | 'fx' | 'death' | 'ult';
+  icon?: string;
+  text?: string;
+  color: string;
+}
+
+// Independent snapshot of the diff-relevant combatant fields. Practice mode
+// mutates the live match state IN PLACE, so the arena must never keep the
+// state object itself as its "previous" baseline — an in-place mutation would
+// rewrite it. A fresh snapshot map keeps prev vs current truly comparable.
+interface CombatSnap {
+  hp: number;
+  alive: boolean;
+  ultCharge: number;
+  effects: { uid: string; kind: EffectKind; amount: number }[];
+}
+
+function snapCombatants(state: MatchState): Record<string, CombatSnap> {
+  const m: Record<string, CombatSnap> = {};
+  for (const c of Object.values(state.combatants)) {
+    m[c.id] = {
+      hp: c.hp,
+      alive: c.alive,
+      ultCharge: c.ultimate?.charge ?? 0,
+      effects: c.effects.map((e) => ({ uid: e.uid, kind: e.kind, amount: e.amount })),
+    };
+  }
+  return m;
+}
 
 interface Props {
   state: MatchState;
@@ -40,7 +75,14 @@ interface Props {
 
 export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, headerRight, footer }: Props) {
   const [pending, setPending] = useState<Pending | null>(null);
-  const logRef = useRef<HTMLDivElement>(null);
+  const [popups, setPopups] = useState<Popup[]>([]);
+  const popId = useRef(0);
+  const prevSnap = useRef<Record<string, CombatSnap> | null>(null);
+  const removeTimers = useRef<number[]>([]);
+  useEffect(() => () => {
+    for (const t of removeTimers.current) window.clearTimeout(t);
+    removeTimers.current = [];
+  }, []);
   const myCombatant = state.combatants[myCombatantId];
   const myTurn = canAct && myCombatant?.alive;
 
@@ -53,13 +95,54 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
     [state, myCombatantId, myCombatant?.id, state.round, state.phase],
   );
 
-  // Face-to-face: the enemy team is always the far side (top); my team is the
+  // Face-off: the enemy team is always the far side (top); my team is the
   // near side (bottom). Single source of truth for "which team is mine".
   const myTeamId = myCombatant?.teamId ?? 0;
 
+  // Diff the new state against the previous one and spawn floating indicators
+  // for every combatant: HP loss -> damage, HP gain -> heal, new effect uid ->
+  // effect icon pop, shield absorb -> shield number, charge loss -> ultimate.
+  // The resting effect icons themselves live on the tile (state.effects).
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
-  }, [state.logSeq]);
+    const prev = prevSnap.current;
+    prevSnap.current = snapCombatants(state);
+    if (!prev) return;
+    const fresh: Omit<Popup, 'id'>[] = [];
+    for (const c of Object.values(state.combatants)) {
+      const p = prev[c.id];
+      if (!p) continue;
+      if (p.alive && !c.alive) fresh.push({ kind: 'death', combatantId: c.id, icon: 'skull', color: '#c78b95' });
+      const hp = p.hp - c.hp;
+      if (hp > 0) fresh.push({ kind: 'dmg', combatantId: c.id, text: `-${hp}`, color: '#ff8a94' });
+      else if (hp < 0) fresh.push({ kind: 'heal', combatantId: c.id, text: `+${-hp}`, color: '#82d3a4' });
+      const oldFx = new Set(p.effects.map((e) => e.uid));
+      for (const e of c.effects) {
+        if (!oldFx.has(e.uid)) {
+          fresh.push({
+            kind: 'fx',
+            combatantId: c.id,
+            icon: EFFECT_META[e.kind]?.icon ?? e.icon,
+            text: e.displayName,
+            color: '#c9b8e8',
+          });
+        }
+      }
+      const shieldOf = (list: { kind: EffectKind; amount: number }[]) =>
+        list.filter((e) => e.kind === 'shield').reduce((s, e) => s + e.amount, 0);
+      const absorbed = shieldOf(p.effects) - shieldOf(c.effects);
+      if (absorbed > 0) fresh.push({ kind: 'shield', combatantId: c.id, text: `-${absorbed}`, color: '#6fa5ad' });
+      if (p.ultCharge > (c.ultimate?.charge ?? 0)) {
+        fresh.push({ kind: 'ult', combatantId: c.id, icon: 'starFourPoints', text: 'ULTIMATE', color: '#c9b8e8' });
+      }
+    }
+    if (fresh.length === 0) return;
+    const items = fresh.map((f) => ({ ...f, id: ++popId.current }));
+    setPopups((list) => [...list, ...items].slice(-80));
+    for (const it of items) {
+      const t = window.setTimeout(() => setPopups((list) => list.filter((x) => x.id !== it.id)), 1500);
+      removeTimers.current.push(t);
+    }
+  }, [state]);
 
   const teams = useMemo(() => {
     const t: { teamId: number; members: string[] }[] = [];
@@ -72,7 +155,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
           .map((c) => c.id),
       });
     }
-    // Face-to-face: enemy team(s) on the far side (top), your team on the
+    // Face-off: enemy team(s) on the far side (top), your team on the
     // near side (bottom). My team is always rendered last.
     return [...t].sort((a, b) => (a.teamId === myTeamId ? 1 : 0) - (b.teamId === myTeamId ? 1 : 0));
   }, [state.combatants, state.teamCount, myTeamId]);
@@ -119,7 +202,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
     setPending(null);
   }
 
-  const logLines = state.log.slice(-45);
+  const popupsFor = (cid: string) => popups.filter((p) => p.combatantId === cid);
 
   return (
     <Arena>
@@ -151,15 +234,23 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
               {team.members.map((cid) => {
                 const c = state.combatants[cid];
                 const targetMode = targetModeFor(team.teamId);
+                const tilePopups = popupsFor(cid);
                 return (
-                  <CombatCard
-                    key={cid}
-                    c={c}
-                    isAlly={isMine}
-                    isActing={state.currentCombatantId === cid}
-                    targetMode={targetMode}
-                    onTarget={pickTarget}
-                  />
+                  <TileWrap key={cid}>
+                    <CombatCard
+                      c={c}
+                      isAlly={isMine}
+                      isActing={state.currentCombatantId === cid}
+                      targetMode={targetMode}
+                      onTarget={pickTarget}
+                    />
+                    {tilePopups.map((p, i) => (
+                      <FloatPopup key={p.id} color={p.color} style={{ top: 2 + (i % 3) * 18 }}>
+                        {p.icon && <I n={p.icon as IconName} />}
+                        {p.text ?? ''}
+                      </FloatPopup>
+                    ))}
+                  </TileWrap>
                 );
               })}
             </TeamCol>
@@ -257,19 +348,6 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
       )}
 
       {footer}
-
-      <LogBox ref={logRef}>
-        {logLines.length === 0 && <Muted>Combat log is empty…</Muted>}
-        {logLines.map((l) => (
-          <LogLine
-            key={l.seq}
-            round={l.text.startsWith('— Round')}
-            damage={l.text.includes('takes') || l.text.includes('eliminated')}
-          >
-            <Muted>R{l.round}</Muted> {l.text}
-          </LogLine>
-        ))}
-      </LogBox>
     </Arena>
   );
 }

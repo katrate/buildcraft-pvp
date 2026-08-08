@@ -116,6 +116,24 @@ export const GlobalStyle = createGlobalStyle`
     from { opacity: 0; transform: translateY(10px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
+  /* Floating combat indicators (damage / heal / effect icons) */
+  @keyframes float-up {
+    0% { opacity: 0; transform: translate(-50%, 4px) scale(0.7); }
+    15% { opacity: 1; transform: translate(-50%, -2px) scale(1.08); }
+    70% { opacity: 1; transform: translate(-50%, -16px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -30px) scale(0.95); }
+  }
+  /* The current-turn player's tile — pulsing glow visible to both sides */
+  @keyframes turn-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(130,148,201,0.9), 0 0 14px rgba(130,148,201,0.5); }
+    50% { box-shadow: 0 0 0 2px rgba(130,148,201,1), 0 0 26px rgba(130,148,201,0.85); }
+  }
+  /* Effect badge pops in when a new status lands on a combatant */
+  @keyframes fx-pop {
+    0% { opacity: 0; transform: scale(0.4); }
+    60% { opacity: 1; transform: scale(1.18); }
+    100% { opacity: 1; transform: scale(1); }
+  }
 
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
@@ -1146,14 +1164,15 @@ export const ArenaTop = styled.div`
   flex-wrap: wrap;
 `;
 
-// Face-to-face arena: the enemy faces you across the field — enemy team on
-// the far side (top), your team on the near side (bottom), VS between them.
-// Each side tilts toward the center so the two teams literally face each other.
+// Face-off arena: enemy team on the far side (top), your team on the near
+// side (bottom), VS between them. Every combatant is a COMPACT TILE laid out
+// in a horizontal row per team — no scrolling even at 5v5. Each side tilts
+// slightly toward the center so the two teams literally face each other.
 export const Battlefield = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
   min-height: 0;
   position: relative;
@@ -1165,9 +1184,9 @@ export const Battlefield = styled.div`
     top: 50%;
     transform: translate(-50%, -50%);
     font-family: 'Rajdhani', sans-serif;
-    font-size: 2.6rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    color: rgba(130, 148, 201, 0.38);
+    color: rgba(130, 148, 201, 0.35);
     letter-spacing: 0.1em;
     z-index: 1;
     pointer-events: none;
@@ -1177,59 +1196,103 @@ export const Battlefield = styled.div`
 
 export const TeamCol = styled.div.withConfig(forwardFilter('facing'))<{ facing?: 'top' | 'bottom' }>`
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: center;
   gap: 10px;
-  overflow-y: auto;
   min-height: 0;
   flex: 1 1 0;
-  padding: 2px;
+  padding: 4px;
   // Far side (enemy) leans back, near side (yours) leans up — facing each other.
-  ${(p) => p.facing === 'top' && css`transform: perspective(700px) rotateX(11deg); transform-origin: top center;`}
-  ${(p) => p.facing === 'bottom' && css`transform: perspective(700px) rotateX(-11deg); transform-origin: bottom center;`}
+  ${(p) => p.facing === 'top' && css`transform: perspective(700px) rotateX(8deg); transform-origin: top center;`}
+  ${(p) => p.facing === 'bottom' && css`transform: perspective(700px) rotateX(-8deg); transform-origin: bottom center;`}
+`;
+
+// Positioning anchor for a combatant tile + its floating indicators.
+export const TileWrap = styled.div`
+  position: relative;
+`;
+
+// Floating combat indicator — damage numbers, heals, effect icons, kills.
+// Pops over the tile it belongs to, rises and fades away.
+export const FloatPopup = styled.div.withConfig(forwardFilter('color'))<{ color: string }>`
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  color: ${(p) => p.color};
+  background: rgba(10, 12, 18, 0.72);
+  border: 1px solid ${(p) => p.color}66;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: float-up 1.4s ease-out forwards;
+  svg { font-size: 1.05em; }
 `;
 
 export const TeamHead = styled.div.withConfig(forwardFilter('tone'))<{ tone?: 'enemy' | 'ally' }>`
   ${DISPLAY}
+  flex-basis: 100%;
+  flex-shrink: 0;
   font-size: 0.7rem;
   letter-spacing: 0.24em;
   color: var(--text-dim);
   text-align: center;
   font-weight: 600;
-  padding: 2px 0 6px;
+  padding: 2px 0 4px;
   ${(p) => p.tone === 'enemy' && css`color: var(--bad);`}
   ${(p) => p.tone === 'ally' && css`color: var(--accent-2);`}
 `;
 
 export const CombatantCard = styled.div.withConfig(forwardFilter('acting', 'dead', 'targetable', 'allyTarget'))<{ acting?: boolean; dead?: boolean; targetable?: boolean; allyTarget?: boolean }>`
   ${angularSurface}
-  ${cutCorners(14)}
-  padding: 12px;
+  ${cutCorners(12)}
+  padding: 8px 8px 9px;
+  width: 132px;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
   align-items: center;
-  transition: all 0.15s ease;
+  gap: 5px;
+  text-align: center;
   border-radius: 4px;
-  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4));
+  transition: all 0.15s ease;
+  // The current-turn player's tile is highlighted for EVERYONE to see.
+  // (Pulse glow only — a positioned marker would be clipped by the clip-path.)
   ${(p) =>
     p.acting &&
-    css`border-color: rgba(130,148,201,0.65); box-shadow: inset 3px 0 0 var(--accent);`}
-  ${(p) => p.dead && 'opacity: 0.35; filter: grayscale(0.9);'}
+    css`
+      border-color: rgba(130, 148, 201, 0.95);
+      animation: turn-pulse 1.6s ease-in-out infinite;
+    `}
+  ${(p) => p.dead && 'opacity: 0.38; filter: grayscale(0.9);'}
   ${(p) => p.targetable && 'cursor: pointer;'}
   ${(p) => p.targetable && css`&:hover { border-color: var(--bad); transform: translateY(-2px); filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3)); }`}
   ${(p) => p.allyTarget && 'cursor: pointer;'}
   ${(p) => p.allyTarget && css`&:hover { border-color: var(--good); transform: translateY(-2px); }`}
 `;
 
-export const Shape = styled.div.withConfig(forwardFilter('variant', 'color'))<{ variant: 'circle' | 'square' | 'triangle' | 'diamond'; color: string }>`
-  width: 46px;
-  height: 46px;
+export const Shape = styled.div.withConfig(forwardFilter('variant', 'color', 'size'))<{ variant: 'circle' | 'square' | 'triangle' | 'diamond'; color: string; size?: number }>`
+  width: ${(p) => p.size ?? 46}px;
+  height: ${(p) => p.size ?? 46}px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
   color: rgba(0, 0, 0, 0.7);
-  font-size: 0.8rem;
+  font-size: ${(p) => (p.size ? '0.7rem' : '0.8rem')};
   font-family: 'Rajdhani', sans-serif;
   background: ${(p) => p.color};
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.25);
@@ -1240,35 +1303,43 @@ export const Shape = styled.div.withConfig(forwardFilter('variant', 'color'))<{ 
   ${(p) => p.variant === 'diamond' && css`transform: rotate(45deg); border-radius: 4px; & > span { transform: rotate(-45deg); }`}
 `;
 
-export const CbInfo = styled.div`flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0;`;
 export const CbName = styled.div`
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 116px;
 `;
-export const CbEffects = styled.div`display: flex; gap: 4px; flex-wrap: wrap; min-height: 16px;`;
+export const CbEffects = styled.div`
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  min-height: 16px;
+`;
 
 export const FxBadge = styled.span.withConfig(forwardFilter('ready'))<{ ready?: boolean }>`
-  font-size: 0.66rem;
+  font-size: 0.62rem;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.14);
   border-radius: 3px;
-  padding: 1px 6px;
+  padding: 1px 5px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   color: var(--text-dim);
+  transform-origin: center;
+  animation: fx-pop 0.3s ease;
+  svg { font-size: 0.82rem; }
   ${(p) => p.ready && css`color: var(--epic); border-color: rgba(162,148,196,0.5);`}
 `;
 
-export const CbSide = styled.div`display: flex; flex-direction: column; gap: 4px; width: 110px; flex-shrink: 0;`;
-
-export const UltPips = styled.div`display: flex; gap: 3px; justify-content: flex-end;`;
+export const UltPips = styled.div`display: flex; gap: 3px; justify-content: center;`;
 export const Pip = styled.span.withConfig(forwardFilter('on'))<{ on?: boolean }>`
   width: 8px;
   height: 8px;
@@ -1358,24 +1429,6 @@ export const PotionButton = styled.button`
   }
 `;
 
-export const LogBox = styled.div`
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 4px;
-  padding: 12px;
-  height: 150px;
-  overflow-y: auto;
-  font-size: 0.76rem;
-  font-family: Consolas, monospace;
-  line-height: 1.5;
-  color: #b9c4d4;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
-`;
-
-export const LogLine = styled.div.withConfig(forwardFilter('round', 'damage'))<{ round?: boolean; damage?: boolean }>`
-  ${(p) => p.round && css`color: var(--accent-2); font-weight: 700;`}
-  ${(p) => p.damage && 'color: #d8b3b8;'}
-`;
 
 // ------------------------------------------------------------
 // App shell + back button

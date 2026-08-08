@@ -11,6 +11,7 @@ import type { CSSProperties, JSX } from 'react';
 
 import account from '@iconify-icons/mdi/account';
 import alert from '@iconify-icons/mdi/alert';
+import arrowDownBold from '@iconify-icons/mdi/arrow-down-bold';
 import arrowLeft from '@iconify-icons/mdi/arrow-left';
 import backpack from '@iconify-icons/mdi/backpack';
 import battery from '@iconify-icons/mdi/battery';
@@ -22,6 +23,7 @@ import cactus from '@iconify-icons/mdi/cactus';
 import cart from '@iconify-icons/mdi/cart';
 import check from '@iconify-icons/mdi/check';
 import chiliMild from '@iconify-icons/mdi/chili-mild';
+import circleSlice8 from '@iconify-icons/mdi/circle-slice-8';
 import close from '@iconify-icons/mdi/close';
 import crown from '@iconify-icons/mdi/crown';
 import cog from '@iconify-icons/mdi/cog';
@@ -49,6 +51,8 @@ import reply from '@iconify-icons/mdi/reply';
 import robot from '@iconify-icons/mdi/robot';
 import run from '@iconify-icons/mdi/run';
 import shield from '@iconify-icons/mdi/shield';
+import shieldAlert from '@iconify-icons/mdi/shield-alert';
+import shieldCheck from '@iconify-icons/mdi/shield-check';
 import shieldOutline from '@iconify-icons/mdi/shield-outline';
 import shieldPlus from '@iconify-icons/mdi/shield-plus';
 import shieldRefresh from '@iconify-icons/mdi/shield-refresh';
@@ -71,6 +75,7 @@ import wrench from '@iconify-icons/mdi/wrench';
 export const ICONS = {
   account,
   alert,
+  arrowDownBold,
   arrowLeft,
   backpack,
   battery,
@@ -82,6 +87,7 @@ export const ICONS = {
   cart,
   check,
   chiliMild,
+  circleSlice8,
   close,
   cog,
   crown,
@@ -109,6 +115,8 @@ export const ICONS = {
   robot,
   run,
   shield,
+  shieldAlert,
+  shieldCheck,
   shieldOutline,
   shieldPlus,
   shieldRefresh,

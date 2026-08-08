@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { usePlayer } from '../state/store';
 import { sendMessage, useWsStatus, connectSocket } from '../services/ws';
 import { CombatArena } from '../components/CombatArena';
@@ -16,6 +17,9 @@ export function CombatOnline(props: { matchInfo: OnlineMatchInfo; onExit: () => 
   const player = usePlayer();
   const status = useWsStatus();
   const { matchInfo } = props;
+  // Bumped on reconnect so the arena remounts — a fresh state after a long
+  // disconnect must not replay a burst of stale damage/effect popups.
+  const [epoch, setEpoch] = useState(0);
 
   const myCombatantId = matchInfo.yourCombatantIds[0] ?? '';
   const myTurn = isMyTurn(matchInfo.match, myCombatantId);
@@ -30,13 +34,16 @@ export function CombatOnline(props: { matchInfo: OnlineMatchInfo; onExit: () => 
 
   function reconnect(): void {
     connectSocket();
-    // Server restores the match on rejoin
+    // Server restores the match on rejoin; remount the arena so the fresh
+    // state doesn't replay a burst of stale popups.
+    setEpoch((e) => e + 1);
     setTimeout(() => sendMessage({ type: 'rejoin', playerId: player.playerId }), 250);
   }
 
   return (
     <FlexFill>
       <CombatArena
+        key={epoch}
         state={matchInfo.match}
         myCombatantId={myCombatantId}
         canAct={myTurn && connected}
