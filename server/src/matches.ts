@@ -1,8 +1,11 @@
 import { WebSocket } from 'ws';
 import { recordMatchResult, type MatchRecordParticipant } from './db';
 import {
-  DISCONNECT_GRACE_MS,
+  AFK_QUEUE_BAN_MS,
+  AFK_RR_PENALTY,
+  AFK_SKIP_MS,
   MATCH_COUNTDOWN_MS,
+  MAX_CONSECUTIVE_SKIPS,
   TURN_TIMEOUT_MS,
 } from '../../shared/src/constants';
 import {
@@ -51,12 +54,21 @@ interface ActiveMatch {
   teamA: number;
   teamB: number;
   turnTimer: NodeJS.Timeout | null;
-  disconnectTimers: Map<string, NodeJS.Timeout>;
   botLoopTimer: NodeJS.Timeout | null;
   /** Server-authoritative countdown before the arena starts (null once started). */
   countdownEndAt: number | null;
   countdownTimer: NodeJS.Timeout | null;
   over: boolean;
+  /** Surrender votes per team (playerId sets). Unanimous among real players on a team. */
+  surrenderVotes: Map<number, Set<string>>;
+  /** Consecutive skipped turns per playerId — reaching MAX_CONSECUTIVE_SKIPS declares AFK. */
+  skipCount: Map<string, number>;
+  /** Muted playerIds: their turns are auto-skipped until they send afk_return. */
+  afk: Set<string>;
+  /** ms epoch when the current player's turn times out (null when no timer is running). */
+  turnDeadlineAt: number | null;
+  /** Transient skip/AFK notice — shown in exactly one broadcast, then cleared. */
+  notice: { combatantId: string; text: string } | null;
 }
 
 export interface PlayerEntry {
@@ -86,11 +98,19 @@ export function buildPvpBuild(
 export class MatchManager {
   private matches = new Map<string, ActiveMatch>();
   private matchIdByPlayer = new Map<string, string>();
+  /** playerId -> ms epoch until which they are banned from the queue (AFK in ranked). */
+  private queueBans = new Map<string, number>();
 
   constructor(
     private botThinkMs = 1100,
     private matchCountdownMs = MATCH_COUNTDOWN_MS,
   ) {}
+
+  /** Remaining ban time (ms) for a player, or 0 when not banned. */
+  getQueueBanLeftMs(playerId: string): number {
+    const until = this.queueBans.get(playerId) ?? 0;
+    return Math.max(0, until - Date.now());
+  }
 
   // `teams` = indices into `players` per team (party groups arrive pre-assigned
   // from the queue so party members always share a team). When omitted, real
@@ -166,11 +186,15 @@ export class MatchManager {
       teamA: teamAInput.length,
       teamB: teamBInput.length,
       turnTimer: null,
-      disconnectTimers: new Map(),
       botLoopTimer: null,
       countdownEndAt: Date.now() + this.matchCountdownMs,
       countdownTimer: null,
       over: false,
+      surrenderVotes: new Map(),
+      skipCount: new Map(),
+      afk: new Set(),
+      turnDeadlineAt: null,
+      notice: null,
     };
 
     const allEntries = [...teamA, ...teamB];
@@ -222,16 +246,18 @@ export class MatchManager {
       m.countdownTimer = null;
     }
     m.countdownEndAt = null;
+    this.scheduleBotLoop(matchId);
+    this.resetTurnTimer(matchId);
+    const meta = this.meta(m);
     for (const player of m.players.values()) {
       this.send(player.ws, {
         type: 'match_start',
         match: m.state,
         yourCombatantIds: [player.combatantId],
         yourTeam: player.teamId,
+        ...meta,
       });
     }
-    this.scheduleBotLoop(matchId);
-    this.resetTurnTimer(matchId);
   }
 
   onAction(matchId: string, playerId: string, action: PlayerAction): boolean {
@@ -243,12 +269,19 @@ export class MatchManager {
     if (!player) return false;
     const combatant = getCombatant(m.state, player.combatantId);
     if (!combatant || combatant.isBot || combatant.playerId !== playerId) return false;
+    if (m.afk.has(playerId)) {
+      this.send(player.ws, { type: 'error', message: 'You are AFK — click back in to play again.' });
+      return false;
+    }
     if (m.state.currentCombatantId !== combatant.id) {
       this.send(player.ws, { type: 'error', message: 'It is not your turn.' });
       return false;
     }
     applyAction(m.state, action);
+    // Acting resets the consecutive-skip counter (skips must be in a row).
+    m.skipCount.delete(playerId);
     this.broadcast(matchId);
+    if (m.over) return true; // match ended inside the broadcast
     this.resetTurnTimer(matchId);
     this.scheduleBotLoop(matchId);
     return true;
@@ -263,11 +296,6 @@ export class MatchManager {
     if (!player) return false;
     player.ws = ws;
     player.disconnectedAt = null;
-    const dt = m.disconnectTimers.get(playerId);
-    if (dt) {
-      clearTimeout(dt);
-      m.disconnectTimers.delete(playerId);
-    }
     const combatant = getCombatant(m.state, player.combatantId);
     if (combatant) {
       combatant.isBot = false;
@@ -288,10 +316,24 @@ export class MatchManager {
       });
       return true;
     }
-    this.send(player.ws, { type: 'match_start', match: m.state, yourCombatantIds: [player.combatantId], yourTeam: player.teamId });
+    const meta = this.meta(m);
+    this.send(player.ws, {
+      type: 'match_start',
+      match: m.state,
+      yourCombatantIds: [player.combatantId],
+      yourTeam: player.teamId,
+      ...meta,
+    });
+    // The clock keeps running for the current turn (a disconnected player's
+    // turns simply skip, and a reconnected player picks up where they left).
     return true;
   }
 
+  // A closed tab never abandons the match: the state stays in memory and the
+  // turn clock keeps running, so the player's turns get skipped and they go
+  // AFK naturally (1v1 loss / team mute). Returning (rejoin) picks up exactly
+  // where they left. The match is NOT bot-ified — an idle combatant is the
+  // intended penalty for leaving mid-game.
   handleDisconnect(playerId: string, ws: WebSocket): void {
     const matchId = this.matchIdByPlayer.get(playerId);
     if (!matchId) return;
@@ -301,19 +343,59 @@ export class MatchManager {
     if (!player || player.ws !== ws) return; // stale socket
     player.ws = null;
     player.disconnectedAt = Date.now();
-    const timer = setTimeout(() => {
-      const mm = this.matches.get(matchId);
-      const pp = mm?.players.get(playerId);
-      if (!mm || mm.over || !pp || pp.ws !== null) return;
-      const combatant = getCombatant(mm.state, player.combatantId);
-      if (combatant) {
-        combatant.isBot = true;
-        combatant.isPlayerControlled = false;
-      }
-      this.scheduleBotLoop(matchId);
-    }, DISCONNECT_GRACE_MS);
-    m.disconnectTimers.set(playerId, timer);
   }
+
+  // ------------------------------------------------------------
+  // Surrender & AFK
+  // ------------------------------------------------------------
+
+  /** Vote to surrender. Ends the match immediately in 1v1; in team matches
+   *  every REAL player on the team must vote before the surrender goes through
+   *  (bots never vote). Returns true if the vote was recorded. */
+  surrender(playerId: string): boolean {
+    const matchId = this.matchIdByPlayer.get(playerId);
+    if (!matchId) return false;
+    const m = this.matches.get(matchId);
+    if (!m || m.over || m.countdownEndAt !== null) return false;
+    const player = m.players.get(playerId);
+    if (!player) return false;
+    const votes = m.surrenderVotes.get(player.teamId) ?? new Set<string>();
+    votes.add(playerId);
+    m.surrenderVotes.set(player.teamId, votes);
+    const required = [...m.players.values()].filter((p) => p.teamId === player.teamId).length;
+    if (votes.size >= required) {
+      const winnerTeam = player.teamId === 0 ? 1 : 0;
+      this.endMatch(matchId, winnerTeam, `${player.name} surrendered — the match is over.`);
+    } else {
+      m.notice = {
+        combatantId: player.combatantId,
+        text: `${player.name} wants to surrender — ${votes.size}/${required} voted.`,
+      };
+      this.broadcast(matchId);
+    }
+    return true;
+  }
+
+  /** A muted player clicked back in — stop skipping their turns. */
+  afkReturn(playerId: string): boolean {
+    const matchId = this.matchIdByPlayer.get(playerId);
+    if (!matchId) return false;
+    const m = this.matches.get(matchId);
+    if (!m || m.over) return false;
+    if (!m.afk.delete(playerId)) return false; // not muted — nothing to undo
+    m.skipCount.delete(playerId);
+    const player = m.players.get(playerId);
+    if (player) {
+      m.notice = { combatantId: player.combatantId, text: `${player.name} is back from AFK.` };
+    }
+    this.broadcast(matchId);
+    this.resetTurnTimer(matchId); // if it's their turn now, restart the clock
+    return true;
+  }
+
+  // ------------------------------------------------------------
+  // Bot driving & timers
+  // ------------------------------------------------------------
 
   // ------------------------------------------------------------
   // Bot driving & timers
@@ -347,32 +429,130 @@ export class MatchManager {
     m.botLoopTimer = setTimeout(() => this.botStep(matchId), this.botThinkMs);
   }
 
+  // (Re)arm the turn clock. Bots are driven by the bot loop instead; the clock
+  // only ever runs for real players. Muted players are skipped on a quick
+  // cadence so the match flows while they are away.
   private resetTurnTimer(matchId: string): void {
     const m = this.matches.get(matchId);
     if (!m || m.over) return;
-    if (m.turnTimer) clearTimeout(m.turnTimer);
-    m.turnTimer = setTimeout(() => {
-      const mm = this.matches.get(matchId);
-      if (!mm || mm.over || mm.state.phase === 'MATCH_END') return;
-      const current = getCurrentCombatant(mm.state);
-      if (!current || current.isBot) return;
-      applyAction(mm.state, { type: 'END_TURN' });
-      this.broadcast(matchId);
-      this.resetTurnTimer(matchId);
-      this.scheduleBotLoop(matchId);
-    }, TURN_TIMEOUT_MS);
+    if (m.turnTimer) {
+      clearTimeout(m.turnTimer);
+      m.turnTimer = null;
+    }
+    if (m.state.phase === 'MATCH_END') {
+      m.turnDeadlineAt = null;
+      return;
+    }
+    const current = getCurrentCombatant(m.state);
+    if (!current || current.isBot) {
+      m.turnDeadlineAt = null;
+      return;
+    }
+    const muted = !!current.playerId && m.afk.has(current.playerId);
+    const wait = muted ? AFK_SKIP_MS : TURN_TIMEOUT_MS;
+    m.turnDeadlineAt = Date.now() + wait;
+    m.turnTimer = setTimeout(() => this.turnTimeout(matchId), wait);
+  }
+
+  private turnTimeout(matchId: string): void {
+    const m = this.matches.get(matchId);
+    if (!m || m.over) return;
+    m.turnTimer = null;
+    if (m.state.phase === 'MATCH_END') {
+      m.turnDeadlineAt = null;
+      return;
+    }
+    const current = getCurrentCombatant(m.state);
+    if (!current || current.isBot) return;
+    const playerId = current.playerId;
+    if (playerId && !m.afk.has(playerId)) {
+      // Muted players skip silently every turn — the persistent afk map (banner
+      // + tile badge) already communicates their state, so per-skip notices
+      // would just spam broadcasts every AFK_SKIP_MS.
+      const skips = (m.skipCount.get(playerId) ?? 0) + 1;
+      m.skipCount.set(playerId, skips);
+      if (skips >= MAX_CONSECUTIVE_SKIPS) {
+        this.declareAfk(matchId, playerId);
+        if (m.over) return; // 1v1 ended the match
+      } else {
+        m.notice = {
+          combatantId: current.id,
+          text: `${current.name} didn't act in time — turn skipped (${skips}/${MAX_CONSECUTIVE_SKIPS}).`,
+        };
+      }
+    }
+    applyAction(m.state, { type: 'END_TURN' });
+    this.broadcast(matchId);
+    if (m.over) return;
+    this.resetTurnTimer(matchId);
+    this.scheduleBotLoop(matchId);
+  }
+
+  // A player hit MAX_CONSECUTIVE_SKIPS: 1v1 loses the match on the spot;
+  // team matches mute them (all turns auto-skip) until they click back in.
+  private declareAfk(matchId: string, playerId: string): void {
+    const m = this.matches.get(matchId);
+    if (!m || m.over) return;
+    m.afk.add(playerId);
+    const player = m.players.get(playerId);
+    const combatant = player ? getCombatant(m.state, player.combatantId) : null;
+    if (m.teamSize === 1) {
+      const loserTeam = player?.teamId ?? 0;
+      const winnerTeam = loserTeam === 0 ? 1 : 0;
+      this.endMatch(matchId, winnerTeam, `${combatant?.name ?? 'A player'} went AFK — the match is lost.`);
+      return;
+    }
+    // Team match: mute. The notice rides on the turnTimeout broadcast that
+    // follows immediately (no separate broadcast — avoids double frames).
+    m.notice = {
+      combatantId: player?.combatantId ?? playerId,
+      text: `${combatant?.name ?? playerId} is AFK — turns are skipped until they return.`,
+    };
+  }
+
+  // Force a match result (surrender / AFK loss). Mirrors the engine's win
+  // condition: phase MATCH_END + winnerTeam, then the normal finish flow.
+  private endMatch(matchId: string, winnerTeam: number, text?: string): void {
+    const m = this.matches.get(matchId);
+    if (!m || m.over) return;
+    m.state.phase = 'MATCH_END';
+    m.state.winnerTeam = winnerTeam;
+    m.state.currentCombatantId = null;
+    this.broadcast(matchId); // sends the final state, then finishes the match
+  }
+
+  // Server-driven meta attached to every match_start / match_state: the turn
+  // deadline, surrender vote tallies, muted combatants and any transient
+  // notice. The notice is one-shot — read and cleared in the same call.
+  private meta(m: ActiveMatch): {
+    turnDeadline: number | null;
+    surrenderVotes: Record<number, number>;
+    afk: Record<string, boolean>;
+    notice: { combatantId: string; text: string } | null;
+  } {
+    const surrenderVotes: Record<number, number> = {};
+    for (const [teamId, votes] of m.surrenderVotes) surrenderVotes[teamId] = votes.size;
+    const afk: Record<string, boolean> = {};
+    for (const playerId of m.afk) {
+      const p = m.players.get(playerId);
+      if (p) afk[p.combatantId] = true;
+    }
+    const notice = m.notice;
+    m.notice = null;
+    return { turnDeadline: m.turnDeadlineAt, surrenderVotes, afk, notice };
   }
 
   private broadcast(matchId: string): void {
     const m = this.matches.get(matchId);
     if (!m) return;
+    const meta = this.meta(m);
     if (m.state.phase === 'MATCH_END') {
       // Always send the final state first so clients see the killing blow
-      this.sendToAll(m, { type: 'match_state', match: m.state });
+      this.sendToAll(m, { type: 'match_state', match: m.state, ...meta });
       this.finishMatch(matchId);
       return;
     }
-    this.sendToAll(m, { type: 'match_state', match: m.state });
+    this.sendToAll(m, { type: 'match_state', match: m.state, ...meta });
   }
 
   // ------------------------------------------------------------
@@ -386,7 +566,6 @@ export class MatchManager {
     if (m.turnTimer) clearTimeout(m.turnTimer);
     if (m.botLoopTimer) clearTimeout(m.botLoopTimer);
     if (m.countdownTimer) clearTimeout(m.countdownTimer);
-    for (const [, dt] of m.disconnectTimers) clearTimeout(dt);
 
     const survived = roundsSurvived(m.state);
     const stats = collectCombatStats(m.state);
@@ -419,6 +598,13 @@ export class MatchManager {
         const my = teamAvgRating.get(player.teamId)!;
         const opp = teamAvgRating.get(oppTeam)!;
         rankDelta = ratingDelta(my, opp, result);
+        // A player who went AFK in ranked (and never returned) eats a flat RR
+        // penalty on top of the result, and is banned from queueing for 1h.
+        if (m.afk.has(player.playerId)) {
+          rankDelta += AFK_RR_PENALTY;
+          this.queueBans.set(player.playerId, Date.now() + AFK_QUEUE_BAN_MS);
+          console.log(`[match] ${player.name} AFK in ranked — RR ${rankDelta}, queue ban 1h`);
+        }
       }
       this.send(player.ws, {
         type: 'match_end',

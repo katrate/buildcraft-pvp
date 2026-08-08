@@ -22,6 +22,7 @@ export function CombatPractice(props: { onExit: () => void }) {
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<MatchState | null>(null);
   const [summaryData, setSummaryData] = useState<MatchSummaryData | null>(null);
+  const [confirmSurrender, setConfirmSurrender] = useState(false);
   const appliedRef = useRef(false);
 
   const myCombatantId = useMemo(() => `p_${player.playerId}`, [player.playerId]);
@@ -106,6 +107,19 @@ export function CombatPractice(props: { onExit: () => void }) {
 
   const npc = Object.values(state.combatants).find((c) => c.isBot);
 
+  // Practice follows the same rule as online: no leaving, only surrender
+  // (which ends the fight as a defeat — practice pays nothing anyway).
+  function surrenderPractice(): void {
+    setConfirmSurrender(false);
+    setState((prev) => {
+      if (!prev || prev.phase === 'MATCH_END') return prev;
+      prev.phase = 'MATCH_END';
+      prev.winnerTeam = 1; // the NPC side
+      prev.currentCombatantId = null;
+      return { ...prev };
+    });
+  }
+
   return (
     <FlexFill>
       <CombatArena
@@ -119,9 +133,21 @@ export function CombatPractice(props: { onExit: () => void }) {
           <Row gap={8}>
             <Chip tone="good">Practice — 1v1</Chip>
             <Chip>vs {npc?.name ?? 'NPC'}</Chip>
-            <Button variant="ghost" onClick={props.onExit}>
-              <I n="close" /> Leave
-            </Button>
+            {!confirmSurrender ? (
+              <Button variant="danger" onClick={() => setConfirmSurrender(true)}>
+                <I n="flagVariant" /> Surrender
+              </Button>
+            ) : (
+              <>
+                <Chip tone="warn">Surrender — end the fight as a loss?</Chip>
+                <Button variant="danger" size="sm" onClick={surrenderPractice}>
+                  <I n="check" /> Yes
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirmSurrender(false)}>
+                  Cancel
+                </Button>
+              </>
+            )}
           </Row>
         }
       />

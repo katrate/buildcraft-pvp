@@ -10,6 +10,7 @@ import type { CSSProperties, JSX } from 'react';
 // ------------------------------------------------------------
 
 import account from '@iconify-icons/mdi/account';
+import accountClock from '@iconify-icons/mdi/account-clock';
 import alert from '@iconify-icons/mdi/alert';
 import arrowDownBold from '@iconify-icons/mdi/arrow-down-bold';
 import arrowLeft from '@iconify-icons/mdi/arrow-left';
@@ -31,6 +32,7 @@ import coins from '@iconify-icons/mdi/coins';
 import cubeOutline from '@iconify-icons/mdi/cube-outline';
 import emoticonAngry from '@iconify-icons/mdi/emoticon-angry';
 import fire from '@iconify-icons/mdi/fire';
+import flagVariant from '@iconify-icons/mdi/flag-variant';
 import flaskRoundBottom from '@iconify-icons/mdi/flask-round-bottom';
 import hammer from '@iconify-icons/mdi/hammer';
 import handshake from '@iconify-icons/mdi/handshake';
@@ -75,6 +77,7 @@ import wrench from '@iconify-icons/mdi/wrench';
 
 export const ICONS = {
   account,
+  accountClock,
   alert,
   arrowDownBold,
   arrowLeft,
@@ -96,6 +99,7 @@ export const ICONS = {
   cubeOutline,
   emoticonAngry,
   fire,
+  flagVariant,
   flaskRoundBottom,
   hammer,
   handshake,

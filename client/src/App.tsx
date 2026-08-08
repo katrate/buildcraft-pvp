@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Login } from './screens/Login';
 import { MainMenu, type Screen } from './screens/MainMenu';
 import { Play } from './screens/Play';
@@ -12,7 +12,7 @@ import { CountdownScreen } from './screens/Countdown';
 import { usePlayer, getState, grantRewards, recordMatch, applyRankDelta, defaultState } from './state/store';
 import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
-import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
+import { connectSocket, sendMessage, subscribeMessages, useWsStatus } from './services/ws';
 import { AppShell, Brand, Button, Chip, MenuScreen, Muted, Panel, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
 import { I } from './ui/icons';
 
@@ -40,11 +40,31 @@ export function App() {
   const queue = useQueue();
   const [now, setNow] = useState(() => Date.now());
   const wsStatus = useWsStatus();
+  // Which account we already asked to rejoin — once per session per account.
+  const rejoinedFor = useRef<string | null>(null);
 
   // Keep a live socket for the whole session
   useEffect(() => {
     connectSocket();
   }, []);
+
+  // Resume a match left mid-game: closing/reloading the tab NEVER abandons
+  // the match (the server keeps it and skips your turns until you return).
+  // The moment the socket is connected and the account is known, ask the
+  // server if there's an active match — it answers with match_start or
+  // match_found (rejoin) or a silent rejoin_result:false.
+  useEffect(() => {
+    if (
+      wsStatus === 'connected' &&
+      auth.status === 'signed-in' &&
+      auth.hydrated &&
+      player.playerId &&
+      rejoinedFor.current !== player.playerId
+    ) {
+      rejoinedFor.current = player.playerId;
+      sendMessage({ type: 'rejoin', playerId: player.playerId });
+    }
+  }, [wsStatus, auth.status, auth.hydrated, player.playerId]);
 
   // When a different account signs in (or you sign out & back in), land on the
   // main menu instead of whatever screen the previous player was on.
@@ -113,12 +133,34 @@ export function App() {
           break;
         case 'match_start':
           setCountdown(null);
-          setOnlineMatch({ match: msg.match, yourCombatantIds: msg.yourCombatantIds, yourTeam: msg.yourTeam });
+          setOnlineMatch({
+            match: msg.match,
+            yourCombatantIds: msg.yourCombatantIds,
+            yourTeam: msg.yourTeam,
+            turnDeadline: msg.turnDeadline ?? null,
+            surrenderVotes: msg.surrenderVotes ?? {},
+            afk: msg.afk ?? {},
+            notice: msg.notice ?? null,
+          });
           setSummary(null);
           setScreen('combat-online');
           break;
         case 'match_state':
-          setOnlineMatch((prev) => (prev ? { ...prev, match: msg.match } : prev));
+          setOnlineMatch((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  match: msg.match,
+                  turnDeadline: msg.turnDeadline ?? null,
+                  surrenderVotes: msg.surrenderVotes ?? prev.surrenderVotes ?? {},
+                  afk: msg.afk ?? prev.afk ?? {},
+                  notice: msg.notice ?? null,
+                }
+              : prev,
+          );
+          break;
+        case 'rejoin_result':
+          // No active match — silently stay wherever we are.
           break;
         case 'match_end': {
           // Snapshot pre-grant progress so the stats screen can animate the
@@ -179,13 +221,6 @@ export function App() {
   const startPractice = useCallback(() => {
     setScreen('combat-practice');
   }, []);
-
-  const exitOnline = useCallback(() => {
-    setOnlineMatch(null);
-    setSummary(null);
-    setCountdown(null);
-    navigate('play');
-  }, [navigate]);
 
   const exitToMenu = useCallback(() => {
     setOnlineMatch(null);
@@ -264,7 +299,7 @@ export function App() {
         />
       )}
       {screen === 'combat-online' && onlineMatch && (
-        <CombatOnline matchInfo={onlineMatch} onExit={exitOnline} />
+        <CombatOnline matchInfo={onlineMatch} />
       )}
       {screen === 'combat-online' && !onlineMatch && (
         <MenuScreen>

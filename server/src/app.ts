@@ -334,6 +334,16 @@ export function startGameServer(
         }
         case 'join_queue': {
           const req = msg as QueueRequest;
+          // AFK penalty: a player who left a ranked match AFK is banned from
+          // the queue for an hour (server-authoritative, enforced at entry).
+          const banLeft = matches.getQueueBanLeftMs(req.playerId);
+          if (banLeft > 0) {
+            send({
+              type: 'error',
+              message: `You went AFK in a ranked match — matchmaking is paused for ${Math.ceil(banLeft / 60_000)}m.`,
+            });
+            return;
+          }
           if (customManager.lobbyOf(req.playerId)) {
             send({ type: 'error', message: 'Leave your custom lobby before joining a queue.' });
             return;
@@ -422,6 +432,10 @@ export function startGameServer(
                   return;
                 }
               }
+              if (matches.getQueueBanLeftMs(m.playerId) > 0) {
+                send({ type: 'error', message: `${m.name} is AFK-penalized and cannot queue for an hour.` });
+                return;
+              }
               if (matches.getMatchIdByPlayer(m.playerId)) {
                 send({ type: 'error', message: `${m.name} is in a match.` });
                 return;
@@ -476,9 +490,17 @@ export function startGameServer(
           matches.onAction(msg.matchId, msg.playerId, msg.action);
           break;
         }
+        case 'surrender': {
+          matches.surrender(msg.playerId);
+          break;
+        }
+        case 'afk_return': {
+          matches.afkReturn(msg.playerId);
+          break;
+        }
         case 'rejoin': {
           const ok = matches.reconnect(msg.playerId, ws);
-          if (!ok) send({ type: 'error', message: 'No active match found.' });
+          if (!ok) send({ type: 'rejoin_result', active: false });
           else sockets.set(msg.playerId, ws);
           break;
         }

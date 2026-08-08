@@ -368,6 +368,11 @@ export type ClientMessage =
   | { type: 'leave_queue'; playerId: string; partyId?: string }
   | { type: 'player_action'; matchId: string; playerId: string; action: PlayerAction }
   | { type: 'rejoin'; playerId: string }
+  // Surrender: ends the match. In team matches every REAL player on the team
+  // must vote before the surrender goes through (bots never count).
+  | { type: 'surrender'; playerId: string }
+  // The muted player clicked back in — their turns stop being skipped.
+  | { type: 'afk_return'; playerId: string }
   // presence & party flow. With Supabase accounts, `hello` carries the
   // access token so the server can bind the socket to the verified user id
   // (it overrides playerId when valid).
@@ -398,8 +403,27 @@ export type ServerMessage =
   | { type: 'queue_update'; queued: number; teamSize: 1 | 2 | 5; mode: PvpMode; minPlayers: number; queuedSince?: number } // oldest queued player's join time (ms epoch) — drives the client's wait timer
   | { type: 'queue_left'; reason?: string } // you were pulled out of the queue (e.g. party broken up)
   | { type: 'match_found'; matchId: string; mode: 'unranked' | 'ranked' | 'custom'; teamSize: 1 | 2 | 5; countdownMs: number; teamA?: number; teamB?: number } // match formed — starts after the countdown
-  | { type: 'match_start'; match: MatchState; yourCombatantIds: string[]; yourTeam: number }
-  | { type: 'match_state'; match: MatchState }
+  // Server-driven match meta (turn clock, surrender votes, AFK flags and
+  // transient notices) — attached to match_start and every match_state.
+  | {
+      type: 'match_start';
+      match: MatchState;
+      yourCombatantIds: string[];
+      yourTeam: number;
+      turnDeadline?: number | null; // ms epoch when the current turn times out (null = no active timer)
+      surrenderVotes?: Record<number, number>; // teamId -> votes cast by real players
+      afk?: Record<string, boolean>; // combatantId -> muted (AFK, turns skipped until they return)
+      notice?: { combatantId: string; text: string } | null; // transient skip/AFK notice
+    }
+  | {
+      type: 'match_state';
+      match: MatchState;
+      turnDeadline?: number | null;
+      surrenderVotes?: Record<number, number>;
+      afk?: Record<string, boolean>;
+      notice?: { combatantId: string; text: string } | null;
+    }
+  | { type: 'rejoin_result'; active: boolean } // you asked to rejoin and there was no active match
   | {
       type: 'match_end';
       matchId: string;

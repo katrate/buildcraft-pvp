@@ -70,11 +70,21 @@ interface Props {
   onAction: (action: PlayerAction) => void;
   headerRight?: ReactNode;
   footer?: ReactNode;
+  /** Server turn clock: ms epoch when the current turn times out (null = none). */
+  turnDeadline?: number | null;
+  /** Muted combatants (AFK) — their turns are skipped until they return. */
+  afk?: Record<string, boolean>;
 }
 
-export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, headerRight, footer }: Props) {
+export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, headerRight, footer, turnDeadline = null, afk = {} }: Props) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [popups, setPopups] = useState<Popup[]>([]);
+  // Live clock for the turn countdown (ticks while the deadline is visible).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(t);
+  }, []);
   const popId = useRef(0);
   const prevSnap = useRef<Record<string, CombatSnap> | null>(null);
   const removeTimers = useRef<number[]>([]);
@@ -160,6 +170,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
   }, [state.combatants, state.teamCount, myTeamId]);
 
   const current = state.currentCombatantId ? state.combatants[state.currentCombatantId] : null;
+  const turnRemaining = turnDeadline != null ? Math.max(0, Math.ceil((turnDeadline - now) / 1000)) : null;
 
   // Rough damage preview for a power, computed against the weakest living enemy.
   function estimateDmg(power: PowerDefinition): number | null {
@@ -218,6 +229,11 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
               '—'
             )}
           </Chip>
+          {turnRemaining != null && current && !current.isBot && (
+            <Chip tone={turnRemaining <= 10 ? 'warn' : 'default'}>
+              <I n="progressClock" /> {turnRemaining}s
+            </Chip>
+          )}
         </Row>
         {headerRight}
       </ArenaTop>
@@ -241,6 +257,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
                       isAlly={isMine}
                       isActing={state.currentCombatantId === cid}
                       targetMode={targetMode}
+                      muted={!!afk[cid]}
                       onTarget={pickTarget}
                     />
                     {tilePopups.map((p, i) => (

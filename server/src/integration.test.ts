@@ -24,10 +24,13 @@ class TestClient {
   match: MatchState | null = null;
   yourIds: string[] = [];
   rating = 1000;
+  /** When false, the harness stops auto-playing the client's turns. */
+  automation = true;
   private opened: Promise<void>;
 
-  constructor(url: string, playerId: string) {
+  constructor(url: string, playerId: string, opts?: { automation?: boolean }) {
     this.playerId = playerId;
+    if (opts?.automation === false) this.automation = false;
     this.ws = new WebSocket(url);
     this.opened = new Promise((resolve) => {
       this.ws.on('open', resolve);
@@ -141,7 +144,12 @@ class TestClient {
     if (this.match && this.shouldAutoAct()) this.autoAct();
   }
 
+  surrender(): void {
+    this.send({ type: 'surrender', playerId: this.playerId });
+  }
+
   private shouldAutoAct(): boolean {
+    if (!this.automation) return false;
     const s = this.match;
     if (!s || s.phase === 'MATCH_END') return false;
     const me = this.yourIds[0];
@@ -181,6 +189,75 @@ describe('multiplayer integration', () => {
     if (server) await server.close();
     server = null;
   });
+
+  it('ends a 1v1 instantly when either player surrenders (defeat)', async () => {
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    const url = `ws://127.0.0.1:${server.port}`;
+    const alice = new TestClient(url, 'sur_a', { automation: false });
+    const bob = new TestClient(url, 'sur_b', { automation: false });
+    await Promise.all([alice.ready(), bob.ready()]);
+    alice.join(1, TEST_PRESET);
+    bob.join(1, TEST_PRESET);
+    await Promise.all([
+      alice.waitFor((m) => m.some((x) => x.type === 'match_start')),
+      bob.waitFor((m) => m.some((x) => x.type === 'match_start')),
+    ]);
+    // Auto-play was disabled at construction so the fight is frozen and the
+    // surrender verdict is the only thing that can end the match.
+    alice.surrender();
+    await Promise.all([
+      alice.waitFor((m) => m.some((x) => x.type === 'match_end'), 10000),
+      bob.waitFor((m) => m.some((x) => x.type === 'match_end'), 10000),
+    ]);
+    const endA = alice.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    const endB = bob.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    expect(endA.result).toBe('defeat');
+    expect(endB.result).toBe('victory');
+    expect(endA.winnerTeam).toBe(endB.yourTeam);
+    alice.close();
+    bob.close();
+  }, 30000);
+
+  it('requires a unanimous surrender vote in team matches (2v2)', async () => {
+    server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    const url = `ws://127.0.0.1:${server.port}`;
+    const a = new TestClient(url, 'tv_a', { automation: false });
+    const b = new TestClient(url, 'tv_b', { automation: false });
+    const c = new TestClient(url, 'tv_c', { automation: false });
+    const d = new TestClient(url, 'tv_d', { automation: false });
+    await Promise.all([a.ready(), b.ready(), c.ready(), d.ready()]);
+    for (const t of [a, b, c, d]) t.join(2, TEST_PRESET);
+    await Promise.all([a, b, c, d].map((t) => t.waitFor((m) => m.some((x) => x.type === 'match_start'), 20000)));
+    // 4 real players fill the 2v2 board exactly (no bots).
+    expect(Object.keys(a.match!.combatants).length).toBe(4);
+    expect(Object.values(a.match!.combatants).filter((x) => x.isBot).length).toBe(0);
+
+    const teamOf = (t: TestClient) =>
+      t.messages.find((m): m is Extract<ServerMessage, { type: 'match_start' }> => m.type === 'match_start')!.yourTeam;
+
+    // One vote does NOT end the match — the whole real team must vote.
+    a.surrender();
+    await new Promise((r) => setTimeout(r, 250));
+    expect(a.messages.some((m) => m.type === 'match_end')).toBe(false);
+
+    // The teammate's vote completes the surrender: the whole team loses.
+    const mate = [b, c, d].find((t) => teamOf(t) === teamOf(a))!;
+    mate.surrender();
+    await Promise.all([a, b, c, d].map((t) => t.waitFor((m) => m.some((x) => x.type === 'match_end'), 10000)));
+    const endA = a.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    const endMate = mate.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    expect(endA.result).toBe('defeat');
+    expect(endMate.result).toBe('defeat');
+    const opponents = [b, c, d].filter((t) => t !== mate);
+    for (const opp of opponents) {
+      const end = opp.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+      expect(end.result).toBe('victory');
+    }
+    a.close();
+    b.close();
+    c.close();
+    d.close();
+  }, 30000);
 
   it('matches two players, plays a full 1v1, and pays out server-computed rewards', async () => {
     server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });

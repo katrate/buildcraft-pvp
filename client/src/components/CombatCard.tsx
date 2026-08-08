@@ -22,9 +22,11 @@ export function CombatCard(props: {
   isAlly?: boolean;
   isActing?: boolean;
   targetMode?: 'enemy' | 'ally' | null;
+  /** Muted (AFK) — turns are being skipped until the player clicks back in. */
+  muted?: boolean;
   onTarget?: (id: string) => void;
 }) {
-  const { c, isAlly = false, isActing, targetMode, onTarget } = props;
+  const { c, isAlly = false, isActing, targetMode, muted = false, onTarget } = props;
   const dead = !c.alive;
   const shape = shapeVariant(c);
   const hpColor = c.hp / c.maxHp > 0.5 ? 'var(--good)' : c.hp / c.maxHp > 0.25 ? 'var(--warn)' : 'var(--bad)';
@@ -46,6 +48,11 @@ export function CombatCard(props: {
       <CbName>{c.name}</CbName>
       <StatBar label="HP" value={c.hp} max={c.maxHp} color={hpColor} height={6} />
       <CbEffects>
+        {muted && !dead && (
+          <FxBadge>
+            <I n="accountClock" /> AFK
+          </FxBadge>
+        )}
         {c.effects.map((e) => (
           <FxBadge key={e.uid}>
             <I n={(EFFECT_META[e.kind]?.icon ?? e.icon) as IconName} />

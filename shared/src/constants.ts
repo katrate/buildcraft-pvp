@@ -52,9 +52,27 @@ export const MAX_ROUNDS = 100;
 export const ULTIMATE_CHARGE_MAX = 5;
 export const ULTIMATE_CHARGE_PER_ROUND = 1;
 export const ULTIMATE_CHARGE_PER_KILL = 1;
-export const TURN_TIMEOUT_MS = 45_000; // server auto-ends turns
-export const DISCONNECT_GRACE_MS = 60_000;
+
+// Turn clock: every player has TURN_TIMEOUT_MS to act, or the server skips
+// their turn. Skipping MAX_CONSECUTIVE_SKIPS turns in a row declares the
+// player AFK (see below). The timeout is server-authoritative; the client
+// only displays the deadline sent in match_state.
+export const TURN_TIMEOUT_MS = 30_000;
+// Consecutive skipped turns before a player is declared AFK.
+export const MAX_CONSECUTIVE_SKIPS = 2;
+// While muted, a player's turns are auto-skipped on this quick cadence so the
+// match keeps flowing until they click back in.
+export const AFK_SKIP_MS = 300;
+// Ranked penalty for leaving a ranked match AFK (flat, on top of the result).
+export const AFK_RR_PENALTY = -15;
+// Players who go AFK in a ranked match and don't return are banned from the
+// matchmaking queue for one hour.
+export const AFK_QUEUE_BAN_MS = 3_600_000;
 export const BOT_THINK_MS = 1100; // bot action delay (server + practice)
+
+// NOTE: DISCONNECT_GRACE_MS was removed — a closed tab no longer bot-ifies a
+// player's combatant. The match continues, their turns are skipped by the
+// turn clock, and they go AFK naturally (1v1 loss / team mute).
 
 // Matchmaking: how long the queue keeps looking for REAL players after the
 // last join. Every new player that joins resets this clock; if it expires,
