@@ -4,7 +4,7 @@ import { getPower } from '../../../shared/src/game-data/powers';
 import { getGear } from '../../../shared/src/game-data/gear';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
-import { Button, EmptyState, ItemGrid, Row, Screen, Tab, Tabs, Tiny } from '../ui/glass';
+import { Button, EmptyState, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Tiny } from '../ui/glass';
 
 export function Inventory(props: { onEditBuild: () => void; onBack: () => void }) {
   const player = usePlayer();
@@ -25,10 +25,13 @@ export function Inventory(props: { onEditBuild: () => void; onBack: () => void }
 
   return (
     <Screen>
-      <Row between>
-        <h1 style={{ margin: 0 }}>Inventory</h1>
+      <ScreenHead>
+        <div>
+          <Kicker>Your collection</Kicker>
+          <ScreenTitle>Inventory</ScreenTitle>
+        </div>
         <BackButton onBack={props.onBack} />
-      </Row>
+      </ScreenHead>
       <Tabs>
         <Tab active={tab === 'powers'} onClick={() => setTab('powers')}>
           Powers ({player.inventory.powers.length})

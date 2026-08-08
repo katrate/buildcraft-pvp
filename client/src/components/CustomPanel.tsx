@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { usePlayer, removeFriend } from '../state/store';
+import { useEffect, useState } from 'react';
+import { usePlayer, addFriend, removeFriend } from '../state/store';
 import {
   useCustom,
   createCustomLobby,
@@ -13,7 +13,7 @@ import {
   setCustomNorm,
   startCustomMatch,
 } from '../state/custom';
-import { sendMessage, useWsStatus } from '../services/ws';
+import { sendMessage, subscribeMessages, useWsStatus } from '../services/ws';
 import type { CustomNorm } from '../../../shared/src/types';
 import { Button, Chip, Col, Divider, Input, Panel, PanelTitle, P, Row, Tiny, UpgradeRow } from '../ui/glass';
 
@@ -43,6 +43,16 @@ export function CustomPanel() {
   const team1 = lobby ? lobby.members.filter((m) => m.team === 1) : [];
   const canStart = !!lobby && lobby.members.length >= 2 && team0.length >= 1 && team1.length >= 1;
 
+  // Lookups initiated here (invite-by-name) are resolved here too, so this
+  // panel never depends on another screen being mounted to add the friend.
+  useEffect(() => {
+    return subscribeMessages((msg) => {
+      if (msg.type === 'player_lookup_result' && msg.online) {
+        addFriend({ playerId: msg.playerId, name: msg.name });
+      }
+    });
+  }, []);
+
   function invite(): void {
     const name = friendName.trim();
     if (!name) return;
@@ -51,9 +61,9 @@ export function CustomPanel() {
   }
 
   return (
-    <Panel style={{ marginTop: 16 }}>
+    <Panel>
       <Row between>
-        <PanelTitle style={{ margin: 0 }}>🤝 Custom Match (friends)</PanelTitle>
+        <PanelTitle style={{ margin: 0 }}>Custom Match (friends)</PanelTitle>
         <Tiny>
           {inLobby ? '● in a lobby — queueing is paused' : 'No rules, any team sizes'}
         </Tiny>

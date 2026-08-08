@@ -759,6 +759,139 @@ export const StatPill = styled.div`
 `;
 
 // ------------------------------------------------------------
+// Sub-screen header — consistent game-menu page header
+// ------------------------------------------------------------
+export const ScreenHead = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+`;
+
+export const ScreenTitle = styled.div`
+  ${DISPLAY}
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  letter-spacing: 0.06em;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.5));
+  &::before {
+    content: '';
+    width: 6px;
+    height: 1.2em;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    transform: skewX(-12deg);
+    flex-shrink: 0;
+  }
+`;
+
+// ------------------------------------------------------------
+// Two-column layout + mode cards (Play) + stat cards (Profile)
+// ------------------------------------------------------------
+export const TwoCol = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-top: 16px;
+  @media (max-width: 920px) { grid-template-columns: 1fr; }
+`;
+
+export const ModeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+`;
+
+export const ModeCard = styled.div`
+  ${angularSurface}
+  ${cutCorners(16)}
+  border-radius: 4px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45));
+  transition: transform 0.16s ease, border-color 0.16s ease;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  &:hover { transform: translateY(-3px); border-color: rgba(255, 70, 85, 0.5); }
+`;
+
+export const ModeIcon = styled.div`
+  width: 46px;
+  height: 46px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: linear-gradient(150deg, rgba(255,70,85,0.18), rgba(255,70,85,0.02));
+  border: 1px solid rgba(255,70,85,0.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+`;
+
+export const ModeTitle = styled.div`
+  ${DISPLAY}
+  font-size: 1.15rem;
+  letter-spacing: 0.14em;
+  color: #fff;
+`;
+
+export const ModeDesc = styled.div`
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+  flex: 1;
+`;
+
+export const StatCardRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+export const StatCard = styled.div`
+  ${angularSurface}
+  ${cutCorners(12)}
+  border-radius: 4px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 3px solid var(--accent);
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.4));
+  b {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: 0.03em;
+  }
+`;
+
+export const SlotGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  @media (max-width: 700px) { grid-template-columns: 1fr; }
+`;
+
+// ------------------------------------------------------------
 // Logo / brand
 // ------------------------------------------------------------
 export const Logo = styled.div`

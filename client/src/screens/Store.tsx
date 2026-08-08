@@ -5,7 +5,7 @@ import { getAllGear } from '../../../shared/src/game-data/gear';
 import type { PowerKind } from '../../../shared/src/types';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
-import { Chip, ItemGrid, Row, Screen, Tab, Tabs, Toast, Tiny } from '../ui/glass';
+import { Chip, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Toast, Tiny } from '../ui/glass';
 
 type StoreTab = 'cores' | 'actives' | 'buffs' | 'ultimates' | 'gear';
 
@@ -59,16 +59,16 @@ export function Store(props: { onBack: () => void }) {
 
   return (
     <Screen>
-      <Row between>
-        <h1 style={{ margin: 0 }}>Store</h1>
+      <ScreenHead>
+        <div>
+          <Kicker>Earnable content only</Kicker>
+          <ScreenTitle>Store</ScreenTitle>
+        </div>
         <Row>
           <Chip tone="warn">🪙 {player.coins} coins</Chip>
           <BackButton onBack={props.onBack} />
         </Row>
-      </Row>
-      <Tiny style={{ display: 'block', marginTop: -6, marginBottom: 12 }}>
-        All content is earnable — no real money buys gameplay power here.
-      </Tiny>
+      </ScreenHead>
 
       <Tabs>
         {TABS.map((t) => (

@@ -34,19 +34,23 @@ import {
   Grow,
   Input,
   ItemIcon,
+  Kicker,
   Panel,
   PanelTitle,
   P,
   PresetTab,
   Row,
   Screen,
+  ScreenHead,
+  ScreenTitle,
   SlotCard,
   SlotEmpty,
+  SlotGrid,
   SlotLabel,
-  SlotList,
   SlotItem,
   StatBlock,
   Tiny,
+  TwoCol,
   UpgradeRow,
 } from '../ui/glass';
 
@@ -101,10 +105,13 @@ export function Build(props: { onBack: () => void }) {
 
   return (
     <Screen>
-      <Row between>
-        <h1 style={{ margin: 0 }}>Build Editor</h1>
+      <ScreenHead>
+        <div>
+          <Kicker>Loadout · {preset.name}</Kicker>
+          <ScreenTitle>Build Editor</ScreenTitle>
+        </div>
         <BackButton onBack={props.onBack} />
-      </Row>
+      </ScreenHead>
 
       <BuildLayout>
         {/* Presets */}
@@ -159,31 +166,48 @@ export function Build(props: { onBack: () => void }) {
           </Col>
         </Panel>
 
-        {/* Slots */}
+        {/* Slots — loadout grid */}
         <Panel>
           <PanelTitle>{preset.name} — click a slot to equip</PanelTitle>
-          <SlotList>
-            {SLOTS.map((slot) => {
+          <SlotGrid>
+            {SLOTS.map((slot, i) => {
+              // Group label on transitions: powers -> gear -> ultimate
+              const prev = i > 0 ? SLOTS[i - 1].accepts : null;
+              const group =
+                i === 0
+                  ? 'Abilities'
+                  : slot.accepts !== prev
+                    ? slot.id === 'ultimate'
+                      ? 'Ultimate'
+                      : 'Gear'
+                    : null;
               const itemId = preset.slots[slot.id] ?? null;
               const item = slot.accepts === 'power' ? getPower(itemId) : getGear(itemId);
               return (
-                <SlotCard key={slot.id} onClick={() => setPickingSlot(slot.id)}>
-                  <ItemIcon size={36}>
-                    {item ? itemIcon(item) : slot.accepts === 'gear' ? '🎒' : '✦'}
-                  </ItemIcon>
-                  <Grow>
-                    <SlotLabel>{slot.label}</SlotLabel>
-                    {item ? (
-                      <SlotItem>{item.name}</SlotItem>
-                    ) : (
-                      <SlotEmpty>Empty — {slot.description}</SlotEmpty>
-                    )}
-                  </Grow>
-                  <Tiny>{item ? item.rarity : '—'}</Tiny>
-                </SlotCard>
+                <div key={slot.id} style={{ display: 'contents' }}>
+                  {group && (
+                    <Kicker style={{ gridColumn: '1 / -1', marginTop: i === 0 ? 0 : 10 }}>
+                      {group}
+                    </Kicker>
+                  )}
+                  <SlotCard onClick={() => setPickingSlot(slot.id)}>
+                    <ItemIcon size={36}>
+                      {item ? itemIcon(item) : slot.accepts === 'gear' ? '🎒' : '✦'}
+                    </ItemIcon>
+                    <Grow>
+                      <SlotLabel>{slot.label}</SlotLabel>
+                      {item ? (
+                        <SlotItem>{item.name}</SlotItem>
+                      ) : (
+                        <SlotEmpty>Empty — {slot.description}</SlotEmpty>
+                      )}
+                    </Grow>
+                    <Tiny>{item ? item.rarity : '—'}</Tiny>
+                  </SlotCard>
+                </div>
               );
             })}
-          </SlotList>
+          </SlotGrid>
           <Tiny style={{ display: 'block', marginTop: 12 }}>
             Basic Attack is always available. Each ability has a fixed number of uses per match. Ultimates
             charge +1 every round and +1 per kill (5 to fire).
@@ -253,9 +277,9 @@ export function Build(props: { onBack: () => void }) {
       </BuildLayout>
 
       {/* Coin upgrades — initiative (everywhere) + ranked (ranked only) */}
-      <Row wrap style={{ alignItems: 'stretch', marginTop: 16 }}>
+      <TwoCol>
         {/* Initiative upgrade */}
-        <Panel style={{ flex: 1 }}>
+        <Panel>
           <Row between>
             <PanelTitle style={{ margin: 0 }}>⚡ Initiative Upgrade</PanelTitle>
             <Chip>Lv {player.initiativeUpgrade}</Chip>
@@ -287,7 +311,7 @@ export function Build(props: { onBack: () => void }) {
         </Panel>
 
         {/* Ranked upgrades */}
-        <Panel style={{ flex: 1 }}>
+        <Panel>
           <Row between>
             <PanelTitle style={{ margin: 0 }}>🏆 Ranked Upgrades</PanelTitle>
             <Chip style={{ color: rank.color }}>
@@ -340,7 +364,7 @@ export function Build(props: { onBack: () => void }) {
             </EmptyState>
           )}
         </Panel>
-      </Row>
+      </TwoCol>
 
       {pickingSlot && (
         <ItemPicker
