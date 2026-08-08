@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { signIn, signUp } from '../state/auth';
 import { useWsStatus } from '../services/ws';
 import { Button, Chip, Col, Input, Logo, MenuScreen, Panel, Row, Tiny } from '../ui/glass';
+import { I } from '../ui/icons';
 
 type Mode = 'signin' | 'signup';
 
@@ -87,8 +88,16 @@ export function Login() {
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />
 
-        {error && <Tiny style={{ color: 'var(--bad)' }}>⚠ {error}</Tiny>}
-        {info && <Tiny style={{ color: 'var(--good)' }}>✓ {info}</Tiny>}
+        {error && (
+          <Tiny style={{ color: 'var(--bad)' }}>
+            <I n="alert" /> {error}
+          </Tiny>
+        )}
+        {info && (
+          <Tiny style={{ color: 'var(--good)' }}>
+            <I n="check" /> {info}
+          </Tiny>
+        )}
 
         <Button variant="primary" size="lg" disabled={busy} onClick={() => void submit()}>
           {busy ? 'Please wait…' : mode === 'signin' ? 'Enter the Arena →' : 'Create account →'}

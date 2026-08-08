@@ -10,6 +10,7 @@ import {
 } from '../state/party';
 import { useWsStatus } from '../services/ws';
 import { FriendsPanel } from './FriendsPanel';
+import { I } from '../ui/icons';
 import { Button, Chip, Col, Panel, PanelTitle, Row, Tiny, UpgradeRow } from '../ui/glass';
 
 export function PartyPanel() {
@@ -64,7 +65,11 @@ export function PartyPanel() {
                   style={{ marginLeft: 8 }}
                   title={m.ready ? 'Ready for matchmaking' : 'Not ready — matchmaking is blocked'}
                 >
-                  {m.ready ? '✓ ready' : '⏳ not ready'}
+                  {m.ready ? (
+                    <><I n="check" /> ready</>
+                  ) : (
+                    <><I n="progressClock" /> not ready</>
+                  )}
                 </Chip>
               </div>
               <Row gap={8}>
@@ -85,8 +90,8 @@ export function PartyPanel() {
           ))}
           {!allReady && (
             <Tiny style={{ color: 'var(--warn)' }}>
-              ⏳ Waiting for {unreadyNames} to ready up before matchmaking can start. Everyone is ready by
-              default — toggle off to pause the party.
+              <I n="progressClock" /> Waiting for {unreadyNames} to ready up before matchmaking can start.
+              Everyone is ready by default — toggle off to pause the party.
             </Tiny>
           )}
           <Tiny>

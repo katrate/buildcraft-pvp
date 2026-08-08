@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { MatchState, PlayerAction, PowerDefinition } from '../../../shared/src/types';
 import { computeDamage, effectiveDefense, getTurnActions, getTurnPotions } from '../../../shared/src/engine/combat';
 import { CombatCard } from './CombatCard';
+import { I } from '../ui/icons';
 import {
   AbilityBar,
   AbilityButton,
@@ -176,7 +177,9 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
               title={`${p.description} · FREE action — one per turn, before you act`}
               onClick={() => onAction({ type: 'USE_POTION', potionId: p.id })}
             >
-              <AbName>🧪 {p.name}</AbName>
+              <AbName>
+                <I n="flaskRoundBottom" /> {p.name}
+              </AbName>
               <AbMeta>
                 {usable
                   ? `${left} use${left === 1 ? '' : 's'} left · free action`
@@ -205,7 +208,9 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
                   : setPending({ type: 'BASIC_ATTACK' })
               }
             >
-              <AbName>⚔ Basic Attack</AbName>
+              <AbName>
+                <I n="swordCross" /> Basic Attack
+              </AbName>
               <AbMeta>always available · choose a target</AbMeta>
             </AbilityButton>
             {actions.map((a) => {
@@ -237,7 +242,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
                 onAction({ type: 'END_TURN' });
               }}
             >
-              End Turn ▶
+              End Turn <I n="play" />
             </Button>
           </>
         )}

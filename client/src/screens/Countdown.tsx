@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { Button, Chip, Col, MenuScreen, Row, Spinner } from '../ui/glass';
+import { I } from '../ui/icons';
 
 // ------------------------------------------------------------
 // CountdownScreen — the \"match found!\" loading screen shown for
@@ -89,13 +90,17 @@ export function CountdownScreen(props: {
         Match found!
       </div>
       <Row gap={10}>
-        <Chip tone="good">🏆 {modeLabel}</Chip>
+        <Chip tone="good">
+          <I n="trophy" /> {modeLabel}
+        </Chip>
         <Chip>{vs}</Chip>
       </Row>
       <BigCard>
         {stuck ? (
           <Col gap={12}>
-            <div style={{ fontWeight: 700, color: 'var(--warn)' }}>⚠️ Connection lost</div>
+            <div style={{ fontWeight: 700, color: 'var(--warn)' }}>
+              <I n="alert" /> Connection lost
+            </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
               The server never started the arena. The match may have been cancelled.
             </div>

@@ -6,17 +6,18 @@ import { getAllPotions } from '../../../shared/src/game-data/potions';
 import type { PowerKind } from '../../../shared/src/types';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
+import { I, type IconName } from '../ui/icons';
 import { EmptyState, Input, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Toast, Tiny } from '../ui/glass';
 
 type StoreTab = 'cores' | 'actives' | 'buffs' | 'ultimates' | 'gear' | 'potions';
 
-const TABS: { id: StoreTab; label: string; icon: string }[] = [
-  { id: 'cores', label: 'Cores', icon: '✦' },
-  { id: 'actives', label: 'Actives', icon: '⚔' },
-  { id: 'buffs', label: 'Buffs', icon: '💚' },
-  { id: 'ultimates', label: 'Ultimates', icon: '🌟' },
-  { id: 'gear', label: 'Gear', icon: '🎒' },
-  { id: 'potions', label: 'Potions', icon: '🧪' },
+const TABS: { id: StoreTab; label: string; icon: IconName }[] = [
+  { id: 'cores', label: 'Cores', icon: 'starFourPoints' },
+  { id: 'actives', label: 'Actives', icon: 'swordCross' },
+  { id: 'buffs', label: 'Buffs', icon: 'heart' },
+  { id: 'ultimates', label: 'Ultimates', icon: 'starShooting' },
+  { id: 'gear', label: 'Gear', icon: 'backpack' },
+  { id: 'potions', label: 'Potions', icon: 'flaskRoundBottom' },
 ];
 
 export function Store(props: { onBack: () => void }) {
@@ -90,16 +91,17 @@ export function Store(props: { onBack: () => void }) {
       <Tabs>
         {TABS.map((t) => (
           <Tab key={t.id} active={tab === t.id} onClick={() => setTab(t.id)}>
-            {t.icon} {t.label}
+            <I n={t.icon} /> {t.label}
           </Tab>
         ))}
       </Tabs>
 
       <Row gap={8} style={{ margin: '12px 0 4px' }}>
+        <I n="magnify" style={{ color: 'var(--text-dim)' }} />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔍 Search this tab…"
+          placeholder="Search this tab…"
           style={{ maxWidth: 340 }}
         />
         {q && <Tiny>{filtered.length} of {items.length} match</Tiny>}

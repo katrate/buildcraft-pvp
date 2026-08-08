@@ -14,6 +14,7 @@ import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
 import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
 import { AppShell, Brand, Button, Chip, MenuScreen, Muted, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
+import { I } from './ui/icons';
 
 type AppScreen = Screen | 'countdown';
 
@@ -195,7 +196,9 @@ export function App() {
           <Stats>
             {auth.devMode && <Chip tone="warn">dev mode</Chip>}
             <Chip>Lv {player.level}</Chip>
-            <Chip tone="warn">🪙 {player.coins}</Chip>
+            <Chip tone="warn">
+              <I n="coins" /> {player.coins}
+            </Chip>
             <Chip>{player.name}</Chip>
           </Stats>
         </TopBar>

@@ -3,6 +3,7 @@ import { EFFECT_META } from '../../../shared/src/game-data/effects';
 import { maxUsesFor } from '../../../shared/src/engine/combat';
 import { ULTIMATE_CHARGE_MAX } from '../../../shared/src/constants';
 import { StatBar } from './StatBar';
+import { I } from '../ui/icons';
 import { CbEffects, CbInfo, CbName, CbSide, CombatantCard, FxBadge, Pip, Shape, UltPips } from '../ui/glass';
 
 export function shapeVariant(c: Combatant): 'circle' | 'square' | 'triangle' | 'diamond' {
@@ -41,7 +42,7 @@ export function CombatCard(props: {
       title={dead ? `${c.name} — eliminated` : c.name}
     >
       <Shape variant={shape} color={dead ? '#3a4354' : teamColor}>
-        <span>{dead ? '✕' : c.isBot ? '' : c.name[0]}</span>
+        <span>{dead ? <I n="close" /> : c.isBot ? '' : c.name[0]}</span>
       </Shape>
       <CbInfo>
         <CbName>{c.name}</CbName>
@@ -57,12 +58,12 @@ export function CombatCard(props: {
           ))}
           {totalUsesMax > 0 && !dead && (
             <FxBadge title="Ability uses remaining this match">
-              🔁 {totalUsesLeft}/{totalUsesMax}
+              <I n="refresh" /> {totalUsesLeft}/{totalUsesMax}
             </FxBadge>
           )}
           {c.ultimate && (
             <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX} title="Ultimate charge">
-              ✦ {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
+              <I n="starFourPoints" /> {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
             </FxBadge>
           )}
         </CbEffects>

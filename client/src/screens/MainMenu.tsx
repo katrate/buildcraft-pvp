@@ -3,6 +3,7 @@ import { useWsStatus } from '../services/ws';
 import { isRankedUnlocked, progressToNextLevel, rankForRating } from '../../../shared/src/progression';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
 import { RankBar } from '../components/RankBar';
+import { I, type IconName } from '../ui/icons';
 import {
   Button,
   Chip,
@@ -33,12 +34,12 @@ export type Screen =
   | 'combat-practice'
   | 'combat-online';
 
-const ITEMS: { id: Screen; label: string; icon: string; sub: string }[] = [
-  { id: 'play', label: 'Play', icon: '⚔', sub: 'Practice · PvP' },
-  { id: 'build', label: 'Build', icon: '🛠', sub: 'Power Presets' },
-  { id: 'inventory', label: 'Inventory', icon: '🎒', sub: 'Your collection' },
-  { id: 'store', label: 'Store', icon: '🛒', sub: 'Powers & gear' },
-  { id: 'profile', label: 'Profile', icon: '👤', sub: 'Stats & record' },
+const ITEMS: { id: Screen; label: string; icon: IconName; sub: string }[] = [
+  { id: 'play', label: 'Play', icon: 'swordCross', sub: 'Practice · PvP' },
+  { id: 'build', label: 'Build', icon: 'wrench', sub: 'Power Presets' },
+  { id: 'inventory', label: 'Inventory', icon: 'backpack', sub: 'Your collection' },
+  { id: 'store', label: 'Store', icon: 'cart', sub: 'Powers & gear' },
+  { id: 'profile', label: 'Profile', icon: 'account', sub: 'Stats & record' },
 ];
 
 export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
@@ -65,7 +66,9 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
 
         {ITEMS.map((item) => (
           <NavItem key={item.id} onClick={() => props.onNavigate(item.id)}>
-            <NavIcon>{item.icon}</NavIcon>
+            <NavIcon>
+              <I n={item.icon} size={20} />
+            </NavIcon>
             <span>
               {item.label}
               <Tiny style={{ display: 'block', letterSpacing: '0.12em', marginTop: 2 }}>
@@ -91,8 +94,8 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             onClick={setDevUnlockRanked}
             title="Dev tool — instantly reach the ranked-unlock threshold (never lowers your level)"
           >
-            ⚡ Instantly Unlock Ranked
-            {!isRankedUnlocked(player.level) ? ` (Level ${RANKED_UNLOCK_LEVEL})` : ' ✓ unlocked'}
+            <I n="lightningBolt" /> Instantly Unlock Ranked
+            {!isRankedUnlocked(player.level) ? ` (Level ${RANKED_UNLOCK_LEVEL})` : <><I n="check" /> unlocked</>}
           </Button>
         </div>
       </NavRail>
@@ -117,7 +120,9 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
           </StatPill>
           <StatPill>
             <span style={{ color: 'var(--warn)' }}>COINS</span>
-            <b>🪙 {player.coins}</b>
+            <b>
+              <I n="coins" /> {player.coins}
+            </b>
           </StatPill>
           <StatPill>
             RECORD

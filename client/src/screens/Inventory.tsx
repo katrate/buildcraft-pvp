@@ -5,6 +5,7 @@ import { getGear } from '../../../shared/src/game-data/gear';
 import { getPotion } from '../../../shared/src/game-data/potions';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
+import { I } from '../ui/icons';
 import { Button, EmptyState, Input, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Tiny } from '../ui/glass';
 
 export function Inventory(props: { onEditBuild: () => void; onBack: () => void }) {
@@ -56,15 +57,16 @@ export function Inventory(props: { onEditBuild: () => void; onBack: () => void }
           Potions ({player.inventory.potions.length})
         </Tab>
         <Button variant="ghost" onClick={props.onEditBuild} style={{ marginLeft: 'auto' }}>
-          🛠 Edit build
+          <I n="wrench" /> Edit build
         </Button>
       </Tabs>
 
       <Row gap={8} style={{ margin: '12px 0 4px' }}>
+        <I n="magnify" style={{ color: 'var(--text-dim)' }} />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔍 Search your collection…"
+          placeholder="Search your collection…"
           style={{ maxWidth: 340 }}
         />
         {q && <Tiny>{filtered.length} of {items.length} match</Tiny>}

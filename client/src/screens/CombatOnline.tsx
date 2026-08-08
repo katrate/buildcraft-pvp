@@ -4,6 +4,7 @@ import { CombatArena } from '../components/CombatArena';
 import { getCurrentCombatant, isMyTurn } from '../../../shared/src/engine/combat';
 import type { MatchRewards, MatchState, PlayerResult } from '../../../shared/src/types';
 import { Button, Chip, FlexFill, MutedBlock, Overlay, OverlayCard, Row, Tiny } from '../ui/glass';
+import { I } from '../ui/icons';
 
 export interface OnlineMatchInfo {
   match: MatchState;
@@ -56,18 +57,24 @@ export function CombatOnline(props: {
         headerRight={
           <Row gap={8}>
             <Chip tone={matchInfo.match.mode === 'ranked' ? 'good' : 'default'}>
-              {matchInfo.match.mode === 'ranked' ? '🏆 RANKED' : matchInfo.match.mode === 'custom' ? '🤝 CUSTOM' : 'UNRANKED'}
+              {matchInfo.match.mode === 'ranked' ? (
+                <><I n="trophy" /> RANKED</>
+              ) : matchInfo.match.mode === 'custom' ? (
+                <><I n="handshake" /> CUSTOM</>
+              ) : (
+                'UNRANKED'
+              )}
             </Chip>
             {(botsOnMyTeam > 0 || botsOnEnemyTeam > 0) && (
               <Chip title="Teams are partially filled with bots to start the match">
-                🤖 {botsOnMyTeam} bot{botsOnMyTeam === 1 ? '' : 's'} on your team{botsOnEnemyTeam > 0 ? ` · ${botsOnEnemyTeam} on theirs` : ''}
+                <I n="robot" /> {botsOnMyTeam} bot{botsOnMyTeam === 1 ? '' : 's'} on your team{botsOnEnemyTeam > 0 ? ` · ${botsOnEnemyTeam} on theirs` : ''}
               </Chip>
             )}
             <Chip tone={connected ? 'good' : 'offline'}>
               {connected ? '● server' : '○ disconnected'}
             </Chip>
             <Button variant="ghost" onClick={props.onExit}>
-              ✕ Leave
+              <I n="close" /> Leave
             </Button>
           </Row>
         }
@@ -125,7 +132,11 @@ export function CombatOnline(props: {
                 )}
               </MutedBlock>
             )}
-            {endInfo.leveledUp && <Chip tone="warn">🎉 Level up!</Chip>}
+            {endInfo.leveledUp && (
+              <Chip tone="warn">
+                <I n="partyPopper" /> Level up!
+              </Chip>
+            )}
             <Tiny>
               {matchInfo.match.mode === 'ranked'
                 ? 'Ranked rewards are server-computed; RP updates with each result.'

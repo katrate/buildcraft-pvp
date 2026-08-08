@@ -4,6 +4,7 @@ import { getGear } from '../../../shared/src/game-data/gear';
 import { getPotion } from '../../../shared/src/game-data/potions';
 import { getPower } from '../../../shared/src/game-data/powers';
 import { ItemCard } from './ItemCard';
+import { I } from '../ui/icons';
 import { Button, Divider, EmptyState, ItemGrid, Modal, ModalBackdrop, Row, Tiny } from '../ui/glass';
 
 export function ItemPicker(props: {
@@ -41,7 +42,9 @@ export function ItemPicker(props: {
       <Modal onClick={(e) => e.stopPropagation()}>
         <Row between>
           <h2>{title}</h2>
-          <Button variant="ghost" onClick={onClose}>✕</Button>
+          <Button variant="ghost" onClick={onClose}>
+            <I n="close" />
+          </Button>
         </Row>
         {currentId && (
           <Button

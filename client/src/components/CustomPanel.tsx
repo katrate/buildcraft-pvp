@@ -15,6 +15,7 @@ import {
 } from '../state/custom';
 import { sendMessage, subscribeMessages, useWsStatus } from '../services/ws';
 import type { CustomNorm } from '../../../shared/src/types';
+import { I } from '../ui/icons';
 import { Button, Chip, Col, Divider, Input, Panel, PanelTitle, P, Row, Tiny, UpgradeRow } from '../ui/glass';
 
 const NORMS: { value: CustomNorm; label: string; hint: string }[] = [
@@ -142,7 +143,11 @@ export function CustomPanel() {
           {([0, 1] as const).map((team) => (
             <div key={team}>
               <Tiny style={{ display: 'block', marginBottom: 4 }}>
-                {team === 0 ? '🟦 Team A' : '🟥 Team B'}
+                {team === 0 ? (
+                  <><I n="squareRounded" style={{ color: 'var(--rare)' }} /> Team A</>
+                ) : (
+                  <><I n="squareRounded" style={{ color: 'var(--bad)' }} /> Team B</>
+                )}
               </Tiny>
               {lobby!.members.filter((m) => m.team === team).map((m) => (
                 <UpgradeRow key={m.playerId}>
@@ -193,7 +198,7 @@ export function CustomPanel() {
                 title={canStart ? 'Start the match (stats normalized to the chosen budget)' : 'Need at least one player on each team'}
                 onClick={() => startCustomMatch()}
               >
-                Start Match ▶
+                Start Match <I n="play" />
               </Button>
               <Button variant="danger" onClick={leaveCustomLobby}>Leave Lobby</Button>
             </>

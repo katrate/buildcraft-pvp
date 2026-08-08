@@ -8,6 +8,7 @@ import { computeRewards } from '../../../shared/src/rewards';
 import { BOT_THINK_MS } from '../../../shared/src/constants';
 import type { MatchRewards, MatchState } from '../../../shared/src/types';
 import { Button, Chip, FlexFill, Muted, Overlay, OverlayCard, Row } from '../ui/glass';
+import { I } from '../ui/icons';
 
 export function CombatPractice(props: { onExit: () => void }) {
   const player = usePlayer();
@@ -88,7 +89,9 @@ export function CombatPractice(props: { onExit: () => void }) {
           <Row gap={8}>
             <Chip tone="good">Practice — 1v1</Chip>
             <Chip>vs {npc?.name ?? 'NPC'}</Chip>
-            <Button variant="ghost" onClick={props.onExit}>✕ Leave</Button>
+            <Button variant="ghost" onClick={props.onExit}>
+              <I n="close" /> Leave
+            </Button>
           </Row>
         }
       />

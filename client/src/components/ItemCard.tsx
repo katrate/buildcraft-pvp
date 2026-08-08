@@ -1,5 +1,6 @@
 import type { GearDefinition, PotionDefinition, PowerDefinition } from '../../../shared/src/types';
 import { EFFECT_META } from '../../../shared/src/game-data/effects';
+import { I, type IconName } from '../ui/icons';
 import {
   Button,
   ItemCard as GlassCard,
@@ -13,25 +14,26 @@ import {
   Tiny,
 } from '../ui/glass';
 
-const ICONS: Record<string, string> = {
+// Material icons per item id (kept in sync with shared/src/game-data/*).
+const ICONS: Record<string, IconName> = {
   // powers
-  flame_core: '🔥', stone_core: '🪨', gale_core: '💨',
-  fire_bolt: '🔥', shield: '🛡', poison: '☠', berserk: '😤', slow: '🐌', heal: '💚',
-  thunder_bolt: '⚡', fireball: '💥', rally: '📯', team_heal: '✨', vampiric_strike: '🩸',
-  counter: '↩', regeneration: '💚', burning_soul: '🔥', thorns: '🌵', swift: '💨', vitality: '❤️',
-  inferno: '🌋', iron_bulwark: '🛡', mass_renewal: '🌟', overclock: '⚙️',
+  flame_core: 'fire', stone_core: 'cubeOutline', gale_core: 'weatherWindy',
+  fire_bolt: 'fire', shield: 'shield', poison: 'skull', berserk: 'emoticonAngry', slow: 'snail', heal: 'heart',
+  thunder_bolt: 'lightningBolt', fireball: 'meteor', rally: 'bullhorn', team_heal: 'heartMultiple', vampiric_strike: 'waterDrop',
+  counter: 'reply', regeneration: 'heartPulse', burning_soul: 'fire', thorns: 'cactus', swift: 'weatherWindy', vitality: 'heart',
+  inferno: 'volcano', iron_bulwark: 'shield', mass_renewal: 'star', overclock: 'cog',
   // gear
-  iron_sword: '🗡', light_blade: '⚔', war_hammer: '🔨',
-  leather_armor: '🧥', light_armor: '🛡', heavy_armor: '🪖',
-  energy_core: '🔋', speed_module: '🏃', life_amulet: '📿', reactive_shield: '🔰',
+  iron_sword: 'sword', light_blade: 'swordCross', war_hammer: 'hammer',
+  leather_armor: 'tshirtCrew', light_armor: 'shieldOutline', heavy_armor: 'shield',
+  energy_core: 'battery', speed_module: 'run', life_amulet: 'necklace', reactive_shield: 'shieldRefresh',
   // potions
-  minor_healing_potion: '🧪', healing_potion: '🧪', greater_healing_potion: '🧴', elixir_of_life: '⚗️',
-  shield_potion: '🧿', rage_potion: '🌶️', stone_potion: '🪨', haste_potion: '💨',
+  minor_healing_potion: 'testTube', healing_potion: 'flaskRoundBottom', greater_healing_potion: 'bottleTonicPlus', elixir_of_life: 'bottleTonic',
+  shield_potion: 'shieldPlus', rage_potion: 'chiliMild', stone_potion: 'cubeOutline', haste_potion: 'weatherWindy',
 };
 
-export function itemIcon(item: PowerDefinition | GearDefinition | PotionDefinition): string {
-  if (item.kind === 'potion') return ICONS[item.id] ?? '🧪';
-  return ICONS[item.id] ?? (item.kind === 'power' ? '⚔' : '🎒');
+export function itemIcon(item: PowerDefinition | GearDefinition | PotionDefinition): IconName {
+  if (item.kind === 'potion') return ICONS[item.id] ?? 'flaskRoundBottom';
+  return ICONS[item.id] ?? (item.kind === 'power' ? 'swordCross' : 'backpack');
 }
 
 export function itemStatsLine(item: PowerDefinition | GearDefinition | PotionDefinition): string {
@@ -85,7 +87,9 @@ export function ItemCard(props: {
   return (
     <GlassCard rarity={item.rarity} clickable={!!onClick} selected={selected} onClick={onClick}>
       <ItemHead>
-        <ItemIcon>{itemIcon(item)}</ItemIcon>
+        <ItemIcon>
+          <I n={itemIcon(item)} size={26} />
+        </ItemIcon>
         <div>
           <ItemName>{item.name}</ItemName>
           <Tiny>

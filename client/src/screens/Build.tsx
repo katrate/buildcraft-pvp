@@ -24,6 +24,7 @@ import { ItemPicker } from '../components/ItemPicker';
 import { StatBar } from '../components/StatBar';
 import { itemIcon } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
+import { I, type IconName } from '../ui/icons';
 import type { RankedFormat, RankedUpgrades, SlotId, StatId } from '../../../shared/src/types';
 import {
   BuildLayout,
@@ -96,9 +97,9 @@ export function Build(props: { onBack: () => void }) {
     initiative: build.stats.initiative + player.initiativeUpgrade,
   };
 
-  const rankedRows: { stat: keyof RankedUpgrades; label: string; icon: string }[] = [
-    { stat: 'attack', label: RANKED_UPGRADE.labels.attack, icon: '⚔' },
-    { stat: 'defense', label: RANKED_UPGRADE.labels.defense, icon: '🛡' },
+  const rankedRows: { stat: keyof RankedUpgrades; label: string; icon: IconName }[] = [
+    { stat: 'attack', label: RANKED_UPGRADE.labels.attack, icon: 'swordCross' },
+    { stat: 'defense', label: RANKED_UPGRADE.labels.defense, icon: 'shield' },
   ];
 
   function rename(): void {
@@ -147,7 +148,7 @@ export function Build(props: { onBack: () => void }) {
                 setNameDraft(preset.name);
               }}
             >
-              ✏ Rename
+              <I n="pencil" /> Rename
             </Button>
             {renaming && (
               <Row gap={6}>
@@ -203,13 +204,15 @@ export function Build(props: { onBack: () => void }) {
                   )}
                   <SlotCard onClick={() => setPickingSlot(slot.id)}>
                     <ItemIcon size={36}>
-                      {item
-                        ? itemIcon(item)
-                        : slot.accepts === 'gear'
-                          ? '🎒'
-                          : slot.accepts === 'potion'
-                            ? '🧪'
-                            : '✦'}
+                      {item ? (
+                        <I n={itemIcon(item)} size={36} />
+                      ) : slot.accepts === 'gear' ? (
+                        <I n="backpack" size={36} />
+                      ) : slot.accepts === 'potion' ? (
+                        <I n="flaskRoundBottom" size={36} />
+                      ) : (
+                        <I n="starFourPoints" size={36} />
+                      )}
                     </ItemIcon>
                     <Grow>
                       <SlotLabel>{slot.label}</SlotLabel>
@@ -227,7 +230,7 @@ export function Build(props: { onBack: () => void }) {
                       }
                     >
                       {item && item.kind === 'gear' && item.slot !== slot.id
-                        ? '⚠ wrong slot'
+                        ? <><I n="alert" /> wrong slot</>
                         : item
                           ? item.rarity
                           : '—'}
@@ -308,7 +311,11 @@ export function Build(props: { onBack: () => void }) {
                 {p.name} ({p.attack ?? 0} dmg · {p.uses ?? 0} use{p.uses === 1 ? '' : 's'})
               </Chip>
             ))}
-            {build.ultimate && <Chip tone="warn">ULT: {build.ultimate.name} ✦/5</Chip>}
+            {build.ultimate && (
+              <Chip tone="warn">
+                ULT: {build.ultimate.name} <I n="starFourPoints" />/5
+              </Chip>
+            )}
           </Row>
           <Tiny style={{ display: 'block', marginTop: 10 }}>
             Changes save automatically.
@@ -321,7 +328,9 @@ export function Build(props: { onBack: () => void }) {
         {/* Initiative upgrade */}
         <Panel>
           <Row between>
-            <PanelTitle style={{ margin: 0 }}>⚡ Initiative Upgrade</PanelTitle>
+            <PanelTitle style={{ margin: 0 }}>
+              <I n="lightningBolt" /> Initiative Upgrade
+            </PanelTitle>
             <Chip>Lv {player.initiativeUpgrade}</Chip>
           </Row>
           <P style={{ margin: '8px 0 0' }}>
@@ -353,7 +362,9 @@ export function Build(props: { onBack: () => void }) {
         {/* Ranked upgrades */}
         <Panel>
           <Row between style={{ flexWrap: 'wrap', gap: 8 }}>
-            <PanelTitle style={{ margin: 0 }}>🏆 Ranked Upgrades · {rankedFormat}</PanelTitle>
+            <PanelTitle style={{ margin: 0 }}>
+              <I n="trophy" /> Ranked Upgrades · {rankedFormat}
+            </PanelTitle>
             <Row gap={6}>
               {(['1v1', '5v5'] as const).map((f) => (
                 <Button key={f} size="sm" variant={rankedFormat === f ? 'primary' : 'ghost'} onClick={() => setRankedFormat(f)}>
@@ -379,7 +390,7 @@ export function Build(props: { onBack: () => void }) {
                   <UpgradeRow key={row.stat}>
                     <div>
                       <div style={{ fontWeight: 600 }}>
-                        {row.icon} {row.label} <Tiny>Lv {lvl}/{ceiling}</Tiny>
+                        <I n={row.icon} /> {row.label} <Tiny>Lv {lvl}/{ceiling}</Tiny>
                       </div>
                       <Tiny>
                         +{Math.round(lvl * (gain ?? 0) * 10) / 10} →{' '}
@@ -392,7 +403,7 @@ export function Build(props: { onBack: () => void }) {
                       title={maxed ? `Capped by ${rank.name} (${rankedFormat}) — win ${rankedFormat} ranked matches to raise it` : `Costs ${cost} coins`}
                       onClick={() => upgradeRanked(row.stat, rankedFormat)}
                     >
-                      {maxed ? 'Maxed' : `+1 (${cost}🪙)`}
+                      {maxed ? 'Maxed' : <>+1 (<I n="coins" /> {cost})</>}
                     </Button>
                   </UpgradeRow>
                 );
@@ -405,7 +416,7 @@ export function Build(props: { onBack: () => void }) {
             </div>
           ) : (
             <EmptyState>
-              🔒 Ranked upgrades unlock at Level {RANKED_UNLOCK_LEVEL}.
+              <I n="lock" /> Ranked upgrades unlock at Level {RANKED_UNLOCK_LEVEL}.
               <br />
               <Tiny>Practice against the NPC and win unranked matches to level up.</Tiny>
             </EmptyState>

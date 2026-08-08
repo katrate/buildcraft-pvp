@@ -10,6 +10,7 @@ import { isRankedUnlocked, rankForRating, rankStatusText } from '../../../shared
 import { RATING_BANDS, tierForRating } from '../../../shared/src/rating';
 import type { PvpMode } from '../../../shared/src/types';
 import { BackButton } from '../components/BackButton';
+import { I } from '../ui/icons';
 import {
   Button,
   Chip,
@@ -132,21 +133,25 @@ export function Play(props: {
       <ModeGrid>
         {/* ============ PRACTICE ============ */}
         <ModeCard>
-          <ModeIcon>🥊</ModeIcon>
+          <ModeIcon>
+            <I n="boxingGlove" size={28} />
+          </ModeIcon>
           <ModeTitle>Practice</ModeTitle>
           <ModeDesc>
             Fight a single NPC to test builds, warm up, or earn coins and XP without queueing. Your real
             build, normal rewards, no upgrades to buy.
           </ModeDesc>
           <Button variant="primary" size="lg" onClick={props.onStartPractice}>
-            ⚔ Fight NPC
+            <I n="swordCross" /> Fight NPC
           </Button>
           <Tiny>Uses your active preset at full stats — a safe sandbox for new builds.</Tiny>
         </ModeCard>
 
         {/* ============ UNRANKED ============ */}
         <ModeCard>
-          <ModeIcon>⚔</ModeIcon>
+          <ModeIcon>
+            <I n="swordCross" size={28} />
+          </ModeIcon>
           <ModeTitle>Unranked</ModeTitle>
           <ModeDesc>
             Server-authoritative, normalized stats. Test your build against real players — empty slots fill
@@ -195,7 +200,9 @@ export function Play(props: {
 
         {/* ============ RANKED ============ */}
         <ModeCard>
-          <ModeIcon>🏆</ModeIcon>
+          <ModeIcon>
+            <I n="trophy" size={28} />
+          </ModeIcon>
           <ModeTitle>Ranked</ModeTitle>
           {isRankedUnlocked(player.level) ? (
             <>
@@ -256,12 +263,14 @@ export function Play(props: {
           ) : (
             <>
               <ModeDesc>
-                <span style={{ color: 'var(--warn)', fontWeight: 700 }}>🔒 LOCKED</span> — reach Level{' '}
-                {RANKED_UNLOCK_LEVEL} to unlock ranked play and ranked stat upgrades. You are Level{' '}
-                {player.level}. Earn XP in practice & unranked — levels keep climbing forever.
+                <span style={{ color: 'var(--warn)', fontWeight: 700 }}>
+                  <I n="lock" /> LOCKED
+                </span>{' '}
+                — reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play and ranked stat upgrades. You are
+                Level {player.level}. Earn XP in practice & unranked — levels keep climbing forever.
               </ModeDesc>
               <Button variant="primary" size="lg" disabled title={`Reach Level ${RANKED_UNLOCK_LEVEL} to unlock ranked`}>
-                🔒 Locked · Level {RANKED_UNLOCK_LEVEL} required
+                <I n="lock" /> Locked · Level {RANKED_UNLOCK_LEVEL} required
               </Button>
             </>
           )}

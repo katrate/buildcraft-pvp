@@ -5,6 +5,7 @@ import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
 import { StatBar } from '../components/StatBar';
 import { RankBar } from '../components/RankBar';
 import { BackButton } from '../components/BackButton';
+import { I } from '../ui/icons';
 import {
   Button,
   Chip,
@@ -102,7 +103,7 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
                     </Tiny>
                     {ratingToNextBand(r.rating) === null && (
                       <Tiny style={{ display: 'block', marginTop: 4, color: band.color }}>
-                        ★ Top rank reached
+                        <I n="star" /> Top rank reached
                       </Tiny>
                     )}
                   </div>
@@ -112,7 +113,7 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
           ) : (
             <>
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '1.4rem', color: 'var(--warn)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                🔒 Locked
+                <I n="lock" /> Locked
               </div>
               <Tiny style={{ display: 'block' }}>
                 Reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play, ranked stat upgrades and both
