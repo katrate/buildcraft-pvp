@@ -11,7 +11,7 @@ import { addXp, applyRankDelta as applyRankDeltaPure, maxRankedUpgradeFor, rankF
 import { START_RATING } from '../../../shared/src/rating';
 import { initiativeUpgradeCost, rankedUpgradeCost } from '../../../shared/src/engine/stats';
 import { tierForRating } from '../../../shared/src/rating';
-import type { Friend, MatchRewards, PlayerRank, PlayerState, Preset, RankedUpgrades, SlotId, StatId } from '../../../shared/src/types';
+import type { Friend, MatchRewards, PlayerRank, PlayerState, Preset, RankedFormat, RankedUpgrades, SlotId, StatId } from '../../../shared/src/types';
 
 const STORAGE_KEY = 'buildcraft_pvp_state_v1';
 
@@ -43,8 +43,14 @@ export function defaultState(): PlayerState {
     activePresetId: 'preset_starter',
     record: { wins: 0, losses: 0, matches: 0 },
     initiativeUpgrade: 0,
-    rankedUpgrades: { attack: 0, defense: 0 },
-    rank: { rating: START_RATING, games: 0 },
+    ranks: {
+      '1v1': { rating: START_RATING, games: 0 },
+      '5v5': { rating: START_RATING, games: 0 },
+    },
+    rankedUpgrades: {
+      '1v1': { attack: 0, defense: 0 },
+      '5v5': { attack: 0, defense: 0 },
+    },
     friends: [],
   };
 }
@@ -56,17 +62,36 @@ function load(): PlayerState {
     const parsed = JSON.parse(raw) as PlayerState;
     if (!parsed.playerId || !parsed.presets || !parsed.inventory) return defaultState();
     const merged = { ...defaultState(), ...parsed };
-    // Migrate the old tier/points ladder (pre-rating) to an ELO rating.
-    const oldRank = parsed.rank as unknown as { tier?: number; points?: number } | undefined;
-    if (oldRank && typeof oldRank.tier === 'number' && typeof merged.rank.rating !== 'number') {
-      merged.rank = { rating: START_RATING + (oldRank.tier ?? 0) * 200, games: 0 };
-    }
-    if (typeof merged.rank.rating !== 'number') merged.rank = { rating: START_RATING, games: 0 };
-    // HP ranked upgrades were removed — strip the legacy field from old saves.
-    merged.rankedUpgrades = {
-      attack: merged.rankedUpgrades?.attack ?? 0,
-      defense: merged.rankedUpgrades?.defense ?? 0,
+    // --- Migration: pre-format saves had a SINGLE `rank` + `rankedUpgrades`
+    // (flat shapes). Their progress carries over to the 5v5 ladder (the format
+    // that was live); the 1v1 ladder starts fresh at the base rating. Both are
+    // rebuilt wholesale ONLY when the legacy flat shape is present — saves that
+    // already use the per-format Record shape are never touched (so re-loading
+    // can never wipe a ladder).
+    const legacy = parsed as unknown as {
+      rank?: PlayerRank | { tier?: number; points?: number };
+      rankedUpgrades?: RankedUpgrades;
     };
+    const lr = legacy.rank;
+    const lu = legacy.rankedUpgrades;
+    if (lr && typeof lr === 'object' && !('5v5' in lr)) {
+      const asRank = lr as PlayerRank;
+      const asTier = lr as { tier?: number; points?: number };
+      merged.ranks = {
+        '1v1': { rating: START_RATING, games: 0 },
+        '5v5':
+          typeof asRank.rating === 'number'
+            ? asRank
+            : { rating: START_RATING + (asTier.tier ?? 0) * 200, games: 0 }, // old tier/points ladder -> ELO
+      };
+    }
+    if (lu && typeof lu === 'object' && !('5v5' in lu)) {
+      // HP ranked upgrades were removed — strip the legacy field from old saves.
+      merged.rankedUpgrades = {
+        '1v1': { attack: 0, defense: 0 },
+        '5v5': { attack: lu.attack ?? 0, defense: lu.defense ?? 0 },
+      };
+    }
     // The old UI allowed gear in the wrong slot (a sword in the armor slot).
     // The server rejects such presets, so auto-drop mismatched gear on load.
     merged.presets = merged.presets.map((p) => {
@@ -236,37 +261,44 @@ export function initiativeUpgradeCostNext(): number {
 
 // ------------------------------------------------------------
 // Ranked stat upgrades — coins, apply ONLY in ranked matches.
-// Each rank caps how far a stat can go.
+// Each ranked FORMAT has its own pool, and that format's rank caps
+// how far each stat can go.
 // ------------------------------------------------------------
-export function upgradeRanked(stat: keyof RankedUpgrades): boolean {
-  const level = state.rankedUpgrades[stat];
-  const ceiling = Math.min(RANKED_UPGRADE.maxLevel, maxRankedUpgradeFor(tierForRating(state.rank.rating)));
+export function upgradeRanked(stat: keyof RankedUpgrades, format: RankedFormat): boolean {
+  const level = state.rankedUpgrades[format][stat];
+  const ceiling = Math.min(RANKED_UPGRADE.maxLevel, maxRankedUpgradeFor(tierForRating(state.ranks[format].rating)));
   if (level >= ceiling) return false;
   const cost = rankedUpgradeCost(stat as StatId, level);
   if (state.coins < cost) return false;
   state = {
     ...state,
     coins: state.coins - cost,
-    rankedUpgrades: { ...state.rankedUpgrades, [stat]: level + 1 },
+    rankedUpgrades: {
+      ...state.rankedUpgrades,
+      [format]: { ...state.rankedUpgrades[format], [stat]: level + 1 },
+    },
   };
   emit();
   return true;
 }
 
-export function rankedUpgradeCostNext(stat: keyof RankedUpgrades): number {
-  return rankedUpgradeCost(stat as StatId, state.rankedUpgrades[stat]);
+export function rankedUpgradeCostNext(stat: keyof RankedUpgrades, format: RankedFormat): number {
+  return rankedUpgradeCost(stat as StatId, state.rankedUpgrades[format][stat]);
 }
 
 // ------------------------------------------------------------
-// Ranked ladder
+// Ranked ladders (per format)
 // ------------------------------------------------------------
-// Apply a server-computed ELO rating delta (can be negative).
+// Apply a server-computed ELO rating delta (can be negative) to one ladder.
 // NOTE (V1 trust model): the rating itself lives in the browser; a real
 // accounts backend must store ratings server-side and verify them.
-export function applyRankDelta(delta: number): PlayerRank {
-  state = { ...state, rank: applyRankDeltaPure(state.rank, delta) };
+export function applyRankDelta(delta: number, format: RankedFormat): PlayerRank {
+  state = {
+    ...state,
+    ranks: { ...state.ranks, [format]: applyRankDeltaPure(state.ranks[format], delta) },
+  };
   emit();
-  return state.rank;
+  return state.ranks[format];
 }
 
 // Dev tool: jump straight to the ranked-unlock threshold (levels themselves
@@ -276,12 +308,12 @@ export function setDevUnlockRanked(): void {
   emit();
 }
 
-export function currentRank(): PlayerRank {
-  return state.rank;
+export function currentRank(format: RankedFormat): PlayerRank {
+  return state.ranks[format];
 }
 
-export function currentRankName(): string {
-  return rankForRating(state.rank.rating).name;
+export function currentRankName(format: RankedFormat): string {
+  return rankForRating(state.ranks[format].rating).name;
 }
 
 // ------------------------------------------------------------

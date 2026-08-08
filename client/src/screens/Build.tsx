@@ -23,7 +23,7 @@ import { ItemPicker } from '../components/ItemPicker';
 import { StatBar } from '../components/StatBar';
 import { itemIcon } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
-import type { RankedUpgrades, SlotId, StatId } from '../../../shared/src/types';
+import type { RankedFormat, RankedUpgrades, SlotId, StatId } from '../../../shared/src/types';
 import {
   BuildLayout,
   Button,
@@ -74,21 +74,24 @@ export function Build(props: { onBack: () => void }) {
   const [pickingSlot, setPickingSlot] = useState<SlotId | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(preset.name);
+  // The 1v1 and 5v5 ranked ladders are independent — this toggle picks which
+  // ladder's upgrades + rank ceiling the ranked preview and upgrade panel show.
+  const [rankedFormat, setRankedFormat] = useState<RankedFormat>('5v5');
 
   const build = computeStats(preset);
   const normalized = normalizeUnranked(build.stats);
   const rankedUnlocked = isRankedUnlocked(player.level);
-  const rank = rankForRating(player.rank.rating);
-  const ceiling = rankedUpgradeCeiling(tierForRating(player.rank.rating));
+  const rank = rankForRating(player.ranks[rankedFormat].rating);
+  const ceiling = rankedUpgradeCeiling(tierForRating(player.ranks[rankedFormat].rating));
 
   // Unranked = normalized base + (non-normalized) initiative upgrade.
   const unrankedStats = { ...normalized, initiative: normalized.initiative + player.initiativeUpgrade };
-  // Ranked = full build + ranked upgrades + initiative upgrade.
-  // HP has no ranked modifier — it stays at 200 base + build bonuses.
+  // Ranked = full build + the selected ladder's ranked upgrades + initiative
+  // upgrade. HP has no ranked modifier — it stays at 200 base + build bonuses.
   const rankedStats = {
     maxHp: build.stats.maxHp,
-    attack: build.stats.attack + (player.rankedUpgrades.attack ?? 0) * (RANKED_UPGRADE.gains.attack ?? 0),
-    defense: build.stats.defense + (player.rankedUpgrades.defense ?? 0) * (RANKED_UPGRADE.gains.defense ?? 0),
+    attack: build.stats.attack + (player.rankedUpgrades[rankedFormat].attack ?? 0) * (RANKED_UPGRADE.gains.attack ?? 0),
+    defense: build.stats.defense + (player.rankedUpgrades[rankedFormat].defense ?? 0) * (RANKED_UPGRADE.gains.defense ?? 0),
     initiative: build.stats.initiative + player.initiativeUpgrade,
   };
 
@@ -228,7 +231,16 @@ export function Build(props: { onBack: () => void }) {
 
         {/* Stats — ranked calculation on top, unranked recalculation below */}
         <Panel>
-          <PanelTitle>Combat Stats (Ranked)</PanelTitle>
+          <Row between style={{ flexWrap: 'wrap', gap: 8 }}>
+            <PanelTitle style={{ margin: 0 }}>Combat Stats (Ranked · {rankedFormat})</PanelTitle>
+            <Row gap={6}>
+              {(['1v1', '5v5'] as const).map((f) => (
+                <Button key={f} size="sm" variant={rankedFormat === f ? 'primary' : 'ghost'} onClick={() => setRankedFormat(f)}>
+                  {f} ladder
+                </Button>
+              ))}
+            </Row>
+          </Row>
           <StatBlock>
             <StatBar
               label="HP · 200 base + build"
@@ -257,8 +269,8 @@ export function Build(props: { onBack: () => void }) {
           </StatBlock>
           <P style={{ margin: '10px 0 0' }}>
             Damage dealt = <b>power attack + your Attack − enemy Defense</b>. HP has no ranked modifier —
-            it starts at 200 and only rises from gear &amp; powers. Your ranked upgrades are already included
-            here ({rank.name} ceiling: {ceiling} per stat
+            it starts at 200 and only rises from gear &amp; powers. This {rankedFormat} ladder's upgrades are
+            already included here ({rank.name} ceiling: {ceiling} per stat
             {rankedUnlocked ? '' : ' — ranked locked until level 20'}).
           </P>
           <Divider />
@@ -325,22 +337,28 @@ export function Build(props: { onBack: () => void }) {
 
         {/* Ranked upgrades */}
         <Panel>
-          <Row between>
-            <PanelTitle style={{ margin: 0 }}>🏆 Ranked Upgrades</PanelTitle>
-            <Chip style={{ color: rank.color }}>
-              {rankedUnlocked ? rankStatusText(player.rank) : `🔒 Level ${RANKED_UNLOCK_LEVEL} required`}
-            </Chip>
+          <Row between style={{ flexWrap: 'wrap', gap: 8 }}>
+            <PanelTitle style={{ margin: 0 }}>🏆 Ranked Upgrades · {rankedFormat}</PanelTitle>
+            <Row gap={6}>
+              {(['1v1', '5v5'] as const).map((f) => (
+                <Button key={f} size="sm" variant={rankedFormat === f ? 'primary' : 'ghost'} onClick={() => setRankedFormat(f)}>
+                  {f}
+                </Button>
+              ))}
+            </Row>
           </Row>
           <P style={{ margin: '8px 0 0' }}>
-            Coin-bought stats that apply <b>only in ranked matches</b>. Your rank caps how far each stat
-            can go ({rank.name}: {ceiling} per stat).
+            Coin-bought stats that apply <b>only in {rankedFormat} ranked matches</b> — this ladder has its
+            own pool, separate from the other. The {rankedFormat} rank caps how far each stat can go ({rank.name}:
+            {ceiling} per stat).
           </P>
           {rankedUnlocked ? (
             <div>
+              <Chip style={{ color: rank.color, marginBottom: 8 }}>{rankStatusText(player.ranks[rankedFormat])}</Chip>
               {rankedRows.map((row) => {
-                const lvl = player.rankedUpgrades[row.stat] ?? 0;
+                const lvl = player.rankedUpgrades[rankedFormat][row.stat] ?? 0;
                 const gain = RANKED_UPGRADE.gains[row.stat as StatId];
-                const cost = rankedUpgradeCostNext(row.stat);
+                const cost = rankedUpgradeCostNext(row.stat, rankedFormat);
                 const maxed = lvl >= ceiling;
                 return (
                   <UpgradeRow key={row.stat}>
@@ -356,8 +374,8 @@ export function Build(props: { onBack: () => void }) {
                     </div>
                     <Button
                       disabled={maxed || player.coins < cost}
-                      title={maxed ? `Capped by ${rank.name} rank — rank up to upgrade more` : `Costs ${cost} coins`}
-                      onClick={() => upgradeRanked(row.stat)}
+                      title={maxed ? `Capped by ${rank.name} (${rankedFormat}) — win ${rankedFormat} ranked matches to raise it` : `Costs ${cost} coins`}
+                      onClick={() => upgradeRanked(row.stat, rankedFormat)}
                     >
                       {maxed ? 'Maxed' : `+1 (${cost}🪙)`}
                     </Button>
@@ -365,8 +383,9 @@ export function Build(props: { onBack: () => void }) {
                 );
               })}
               <Tiny style={{ display: 'block', marginTop: 6 }}>
-                Rank up by winning ranked matches — {maxRankedUpgradeFor(tierForRating(player.rank.rating) + 1)} levels per
-                stat at the next tier.
+                Rank up by winning {rankedFormat} ranked matches —{' '}
+                {maxRankedUpgradeFor(tierForRating(player.ranks[rankedFormat].rating) + 1)} levels per stat at the
+                next tier.
               </Tiny>
             </div>
           ) : (

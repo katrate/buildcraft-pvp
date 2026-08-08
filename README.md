@@ -28,7 +28,7 @@ npm run dev
 | Custom matches | Friend lobbies, 1v1→5v5 with **any uneven split** (2v5 allowed), no bots, fully normalized; the leader picks the norm level (standard or a rank budget) |
 | Initiative upgrade | Coin-bought in the Build editor, cost creeps per level; decides who acts first and is **not normalized** in unranked |
 | Unranked PvP | 1v1, 2v2, 5v5 via server matchmaking; teams fill with real players first, bots as a fallback; stats normalized (except initiative upgrade) |
-| Ranked PvP | Unlocks at Level 20: **5v5 only**, Bronze→Diamond ELO ladder, ranked-only coin stat upgrades capped by your rank, no bots — every slot is a real player within your rank window |
+| Ranked PvP | Unlocks at Level 20: **two ladders — 1v1 (solo) and 5v5 (parties)** — each with its **own rank** and its **own stat-upgrade pool**; Bronze→Diamond ELO ladder, upgrades capped by that ladder's rank, no bots — every slot is a real player within your rank window |
 | Party & friends | Friends list (add by online pilot name), parties of up to 5, ready-check before queueing, whole-party queueing, kick/leave, ranked ±1 rank rule around the leader |
 | Progression | Endless XP curve — no level cap, XP requirements grow every level, coins, record |
 | Combat | Server-authoritative: initiative, rounds/turns, **per-match ability uses** (no energy), DoTs, shields, buffs/debuffs, stuns, counter/thorns, ultimates charging +1/round and +1/kill (5 to fire) |
@@ -57,9 +57,10 @@ npm run dev
 - **Unranked normalization** (`shared/src/engine/normalize.ts`) re-bases builds toward a
   reference level so grinding doesn't decide matches — builds do. The coin-bought
   Initiative upgrade is applied **after** normalization on purpose.
-- **Ranked ladder** (`shared/src/progression.ts`): Bronze → Silver → Gold → Platinum →
-  Diamond. Each rank caps ranked stat upgrades (5/8/12/16/20 levels per stat). Ranked
-  matches never fill with bots — real players only.
+- **Ranked ladders** (`shared/src/progression.ts`): Bronze → Silver → Gold → Platinum →
+  Diamond. **1v1 and 5v5 are independent ladders** — separate rating, rank band, games,
+  and their own coin-bought stat-upgrade pool (each pool capped by that ladder's rank:
+  5/8/12/16/20 levels per stat). Ranked matches never fill with bots — real players only.
 - **Data-driven content:** powers/gear/effects/NPCs are plain definitions in
   `shared/src/game-data/`. Add content by appending definitions — the engine interprets
   them generically.
@@ -110,12 +111,12 @@ npm run build        # production client build
   it). The leader can't start matchmaking until the whole party is ready — toggling
   unready while queued pulls the party out of the queue. Queue buttons show who's
   still not ready.
-- **Ranked:** **5v5 only** (no 1v1/2v2). Every member must be within **±1 rank band
-  of the party leader** (rejected at queue time otherwise), and the enemy team is
-  matched **around the leader's rank** — the same window rules as solo ranked
-  (including the 60s ±2 widening). Parties up to 5 queue together; their empty
-  slots fill with real players (no bots in ranked), so a party of 3 queues 5v5
-  while a party of 6+ cannot queue ranked at all.
+- **Ranked:** parties only queue the **5v5 ladder** (1v1 is solo-only). Every member
+  must be within **±1 rank band of the party leader** (rejected at queue time
+  otherwise), and the enemy team is matched **around the leader's 5v5 rank** — the
+  same window rules as solo ranked (including the 60s ±2 widening). Parties up to 5
+  queue together; their empty slots fill with real players (no bots in ranked), so a
+  party of 3 queues 5v5 while a party of 6+ cannot queue ranked at all.
 - Leaving/kicking a party pulls the whole unit out of any queue.
 - **Match countdown:** once a match is formed (solo or party), the server announces
   `match_found` and starts the arena after **`MATCH_COUNTDOWN_MS` (5s)** — players

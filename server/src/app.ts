@@ -309,10 +309,11 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
             send({ type: 'error', message: 'Invalid match mode.' });
             return;
           }
-          // Ranked is competitive: 5v5 ONLY (no 1v1/2v2), and it never fills
-          // with bots — every slot must be a real player within the rank window.
-          if (mode === 'ranked' && req.teamSize !== 5) {
-            send({ type: 'error', message: 'Ranked is 5v5 only.' });
+          // Ranked is competitive: 1v1 or 5v5 (each its own ladder), never 2v2,
+          // and it never fills with bots — every slot must be a real player
+          // within the rank window.
+          if (mode === 'ranked' && req.teamSize !== 1 && req.teamSize !== 5) {
+            send({ type: 'error', message: 'Ranked is 1v1 or 5v5 only.' });
             return;
           }
           if (matches.getMatchIdByPlayer(req.playerId)) {
@@ -341,6 +342,11 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
             const members = [...party.members.values()];
             const creator = party.members.get(party.leaderId)!;
             const creatorTier = tierForRating(creator.setup.rating ?? 1000);
+            // Ranked 1v1 is solo-only — a party can only queue the 5v5 ladder.
+            if (mode === 'ranked' && req.teamSize === 1) {
+              send({ type: 'error', message: 'Ranked 1v1 is solo only — parties queue ranked 5v5.' });
+              return;
+            }
             if (mode === 'ranked' && members.length > req.teamSize) {
               send({ type: 'error', message: `Party of ${members.length} is too large for ranked ${req.teamSize}v${req.teamSize}.` });
               return;

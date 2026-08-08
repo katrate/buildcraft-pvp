@@ -321,6 +321,44 @@ describe('multiplayer integration', () => {
     for (const c of clients) c.close();
   }, 120000);
 
+  it('runs a ranked 1v1 on its own ladder (solo only, no bots)', async () => {
+    server = await startGameServer(0, { botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });
+    const url = `ws://127.0.0.1:${server.port}`;
+    const alice = new TestClient(url, 'r1_a');
+    const bob = new TestClient(url, 'r1_b');
+    await Promise.all([alice.ready(), bob.ready()]);
+
+    alice.join(1, TEST_PRESET, { mode: 'ranked' });
+    bob.join(1, TEST_PRESET, { mode: 'ranked' });
+
+    await Promise.all([
+      alice.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
+      bob.waitFor((m) => m.some((x) => x.type === 'match_start'), 15000),
+    ]);
+    expect(alice.match!.mode).toBe('ranked');
+    // 1v1 board: exactly 2 real players, no bots.
+    expect(Object.keys(alice.match!.combatants).length).toBe(2);
+    expect(Object.values(alice.match!.combatants).filter((c) => c.isBot).length).toBe(0);
+
+    await Promise.all([
+      alice.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
+      bob.waitFor((m) => m.some((x) => x.type === 'match_end'), 40000),
+    ]);
+    const endA = alice.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    const endB = bob.messages.find((m): m is Extract<ServerMessage, { type: 'match_end' }> => m.type === 'match_end')!;
+    // The 1v1 ladder delta arrives tagged with teamSize 1 so the client can
+    // apply it to the 1v1 rank (never the 5v5 rank).
+    expect(endA.teamSize).toBe(1);
+    expect(endB.teamSize).toBe(1);
+    expect(endA.rankDelta).toBeDefined();
+    expect(endB.rankDelta).toBeDefined();
+    expect([-16, 0, 16]).toContain(endA.rankDelta);
+    expect(endA.rankDelta).toBe(-(endB.rankDelta ?? 0));
+    expect(endA.rewards.coins).toBeGreaterThanOrEqual(40);
+    alice.close();
+    bob.close();
+  }, 60000);
+
   it('ranks an upset fairly: the underdog gains big, the favorite loses small', async () => {
     // Ratings must stay within the ±1 rank window (5 Gold at 1400 vs 5 Silver at 1200).
     // Determinism: gold units queue FIRST, and partitionTeams is DFS "try team A

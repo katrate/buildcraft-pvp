@@ -79,11 +79,13 @@ subscribeMessages((msg: ServerMessage) => {
 
 function mySetup() {
   const p = getState();
+  // Custom matches are fully normalized (ranked upgrades never apply), so the
+  // payload just carries a stable pool — the 5v5 ladder's data is the default.
   return {
     preset: getActivePreset(),
     initiativeUpgrade: p.initiativeUpgrade,
-    rankedUpgrades: p.rankedUpgrades,
-    rating: p.rank.rating,
+    rankedUpgrades: p.rankedUpgrades['5v5'],
+    rating: p.ranks['5v5'].rating,
   };
 }
 
@@ -93,7 +95,7 @@ let lastBuildSig: string | null = null;
 function buildSig(): string {
   const p = getState();
   const preset = getActivePreset();
-  return JSON.stringify([p.activePresetId, preset.slots, p.initiativeUpgrade, p.rankedUpgrades, p.rank.rating]);
+  return JSON.stringify([p.activePresetId, preset.slots, p.initiativeUpgrade, p.rankedUpgrades, p.ranks]);
 }
 subscribePlayer(() => {
   if (!state.lobby) {

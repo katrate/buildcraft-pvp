@@ -416,7 +416,15 @@ export class MatchManager {
         const opp = teamAvgRating.get(oppTeam)!;
         rankDelta = ratingDelta(my, opp, result);
       }
-      this.send(player.ws, { type: 'match_end', matchId, winnerTeam: m.state.winnerTeam ?? -1, result, rewards, rankDelta });
+      this.send(player.ws, {
+        type: 'match_end',
+        matchId,
+        winnerTeam: m.state.winnerTeam ?? -1,
+        result,
+        rewards,
+        teamSize: m.teamSize,
+        rankDelta,
+      });
       this.matchIdByPlayer.delete(player.playerId);
     }
     this.matches.delete(matchId);

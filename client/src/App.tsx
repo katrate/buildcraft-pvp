@@ -73,7 +73,11 @@ export function App() {
           break;
         case 'match_end': {
           const leveled = grantRewards(msg.rewards);
-          if (msg.rankDelta !== undefined) applyRankDelta(msg.rankDelta);
+          // Ranked ladders are per-format: a 1v1 match updates the 1v1 rank,
+          // a 5v5 match updates the 5v5 rank.
+          if (msg.rankDelta !== undefined) {
+            applyRankDelta(msg.rankDelta, msg.teamSize === 1 ? '1v1' : '5v5');
+          }
           setEndInfo({
             result: msg.result,
             rewards: msg.rewards,

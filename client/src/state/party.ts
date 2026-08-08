@@ -98,11 +98,13 @@ subscribeMessages((msg: ServerMessage) => {
 
 function mySetup() {
   const p = getState();
+  // Parties only queue the ranked 5v5 ladder, so setup carries the 5v5 pool
+  // and the leader's 5v5 rating (the ±1 rank rule anchors on it).
   return {
     preset: getActivePreset(),
     initiativeUpgrade: p.initiativeUpgrade,
-    rankedUpgrades: p.rankedUpgrades,
-    rating: p.rank.rating,
+    rankedUpgrades: p.rankedUpgrades['5v5'],
+    rating: p.ranks['5v5'].rating,
   };
 }
 
@@ -115,7 +117,7 @@ let lastBuildSig: string | null = null;
 function buildSig(): string {
   const p = getState();
   const preset = getActivePreset();
-  return JSON.stringify([p.activePresetId, preset.slots, p.initiativeUpgrade, p.rankedUpgrades, p.rank.rating]);
+  return JSON.stringify([p.activePresetId, preset.slots, p.initiativeUpgrade, p.rankedUpgrades, p.ranks]);
 }
 subscribePlayer(() => {
   if (!state.party) {
@@ -191,6 +193,9 @@ export function syncPartySetup(): void {
 export function queueParty(teamSize: 1 | 2 | 5, mode: 'unranked' | 'ranked'): void {
   const p = getState();
   const partyId = state.party?.partyId;
+  // Parties queue 1v1 never (solo only) — the 5v5 ladder's pool is what ranked
+  // parties carry.
+  const format: '1v1' | '5v5' = teamSize === 1 ? '1v1' : '5v5';
   sendMessage({
     type: 'join_queue',
     playerId: p.playerId,
@@ -199,8 +204,8 @@ export function queueParty(teamSize: 1 | 2 | 5, mode: 'unranked' | 'ranked'): vo
     mode,
     preset: getActivePreset(),
     initiativeUpgrade: p.initiativeUpgrade,
-    rankedUpgrades: p.rankedUpgrades,
-    rating: p.rank.rating,
+    rankedUpgrades: p.rankedUpgrades[format],
+    rating: p.ranks[format].rating,
     partyId,
   });
 }

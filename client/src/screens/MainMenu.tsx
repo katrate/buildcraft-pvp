@@ -1,6 +1,6 @@
 import { usePlayer, setDevUnlockRanked } from '../state/store';
 import { useWsStatus } from '../services/ws';
-import { isRankedUnlocked, progressToNextLevel, rankForRating, rankStatusText } from '../../../shared/src/progression';
+import { isRankedUnlocked, progressToNextLevel, rankForRating } from '../../../shared/src/progression';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
 import {
   Button,
@@ -43,7 +43,15 @@ const ITEMS: { id: Screen; label: string; icon: string; sub: string }[] = [
 export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
   const player = usePlayer();
   const status = useWsStatus();
-  const ranked = rankForRating(player.rank.rating);
+  // The two ranked ladders are independent — show both, compactly.
+  const rank1v1 = rankForRating(player.ranks['1v1'].rating);
+  const rank5v5 = rankForRating(player.ranks['5v5'].rating);
+  const rankLine = isRankedUnlocked(player.level)
+    ? `1v1 ${rank1v1.name.toUpperCase()} · 5v5 ${rank5v5.name.toUpperCase()}`
+    : `LOCKED @${RANKED_UNLOCK_LEVEL}`;
+  const rankPill = isRankedUnlocked(player.level)
+    ? `${rank1v1.name.toUpperCase()} 1v1 · ${rank5v5.name.toUpperCase()} 5v5`
+    : '—';
 
   return (
     <MenuShell>
@@ -74,7 +82,7 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             {status === 'connected' ? '● server online' : status === 'connecting' ? '○ connecting…' : '○ server offline'}
           </Chip>
           <Tiny style={{ letterSpacing: '0.1em' }}>
-            LV {player.level} · RANKED {isRankedUnlocked(player.level) ? ranked.name.toUpperCase() : `LOCKED @${RANKED_UNLOCK_LEVEL}`}
+            LV {player.level} · RANKED {rankLine}
           </Tiny>
           {!isRankedUnlocked(player.level) && (
             <Button variant="ghost" size="sm" onClick={setDevUnlockRanked} title="Instantly reach the ranked-unlock threshold">
@@ -114,8 +122,8 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
           </StatPill>
           <StatPill>
             RANK
-            <b style={isRankedUnlocked(player.level) ? { color: ranked.color } : { color: 'var(--text-dim)' }}>
-              {isRankedUnlocked(player.level) ? ranked.name.toUpperCase() : '—'}
+            <b style={isRankedUnlocked(player.level) ? { color: rank5v5.color } : { color: 'var(--text-dim)' }}>
+              {rankPill}
             </b>
           </StatPill>
         </div>
@@ -132,7 +140,8 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             <Fill pct={progressToNextLevel(player.level, player.xp) * 100} color="var(--accent)" />
           </Track>
           <Tiny style={{ display: 'block', marginTop: 6, textAlign: 'right' }}>
-            {Math.round(progressToNextLevel(player.level, player.xp) * 100)}% · {isRankedUnlocked(player.level) ? rankStatusText(player.rank) : 'keep fighting to unlock ranked'}
+            {Math.round(progressToNextLevel(player.level, player.xp) * 100)}% ·{' '}
+            {isRankedUnlocked(player.level) ? rankLine : 'keep fighting to unlock ranked'}
           </Tiny>
         </div>
 

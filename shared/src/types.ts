@@ -252,6 +252,11 @@ export type RankedUpgrades = {
   defense: number;
 };
 
+// Ranked formats each run their OWN ladder — a separate rating, rank band,
+// games counter, and their own coin-bought stat-upgrade pool (each capped by
+// that format's rank). 1v1 rank and 5v5 rank never mix.
+export type RankedFormat = '1v1' | '5v5';
+
 export type PvpMode = 'unranked' | 'ranked';
 
 export interface QueueRequest {
@@ -340,6 +345,7 @@ export type ServerMessage =
       winnerTeam: number;
       rewards: MatchRewards;
       result: PlayerResult;
+      teamSize: 1 | 2 | 5; // which format the match was (drives which ladder a ranked delta lands on)
       rankDelta?: number; // ranked only: +1 win / -1 loss / 0 draw
     }
   | { type: 'error'; message: string }
@@ -415,7 +421,10 @@ export interface PlayerState {
   activePresetId: string;
   record: PlayerRecord;
   initiativeUpgrade: number; // coin-bought initiative levels (applies everywhere, not normalized in unranked)
-  rankedUpgrades: RankedUpgrades; // coin-bought upgrades that apply ONLY in ranked matches
-  rank: PlayerRank;
+  // Ranked ladders are per-format: 1v1 and 5v5 each have their own rating,
+  // rank band, games, and their own coin-bought stat-upgrade pool (each pool
+  // is capped by that format's rank). Upgrades apply ONLY in ranked matches.
+  ranks: Record<RankedFormat, PlayerRank>;
+  rankedUpgrades: Record<RankedFormat, RankedUpgrades>;
   friends: Friend[]; // locally stored friends (no accounts in V1)
 }

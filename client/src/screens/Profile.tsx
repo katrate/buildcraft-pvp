@@ -21,11 +21,16 @@ import {
   TwoCol,
 } from '../ui/glass';
 
+const FORMATS: { id: '1v1' | '5v5'; label: string }[] = [
+  { id: '1v1', label: '1v1' },
+  { id: '5v5', label: '5v5' },
+];
+
 export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
   const player = usePlayer();
   const active = getActivePreset();
   const rankedUnlocked = isRankedUnlocked(player.level);
-  const rank = rankForRating(player.rank.rating);
+  const rank = rankForRating(player.ranks['5v5'].rating);
 
   return (
     <Screen>
@@ -67,25 +72,39 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
       </StatCardRow>
 
       <TwoCol>
-        {/* Ranked status */}
+        {/* Ranked status — both ladders */}
         <Panel>
           <PanelTitle>Ranked PvP</PanelTitle>
           {rankedUnlocked ? (
             <>
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '1.6rem', color: rank.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {rank.name.toUpperCase()}
-              </div>
-              <Tiny>{rankStatusText(player.rank)}</Tiny>
-              <Divider />
-              <Tiny style={{ display: 'block' }}>
-                Ranked matches: <b style={{ color: 'var(--text)' }}>{player.rank.games}</b> · Upgrade ceiling:{' '}
-                <b style={{ color: 'var(--text)' }}>{maxRankedUpgradeFor(tierForRating(player.rank.rating))}</b> levels per stat
+              <Tiny style={{ display: 'block', marginBottom: 8 }}>
+                Two independent ladders — <b>1v1</b> and <b>5v5</b> — each with its own rank and its own
+                stat-upgrade pool.
               </Tiny>
-              {ratingToNextBand(player.rank.rating) !== null && (
-                <Tiny style={{ display: 'block', marginTop: 6 }}>
-                  <b style={{ color: 'var(--accent)' }}>{ratingToNextBand(player.rank.rating)! - player.rank.rating} RP</b> to next rank
-                </Tiny>
-              )}
+              {FORMATS.map((f) => {
+                const r = player.ranks[f.id];
+                const band = rankForRating(r.rating);
+                return (
+                  <div key={f.id} style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <Chip style={{ color: band.color }}>{f.label}</Chip>
+                      <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '1.5rem', color: band.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {band.name.toUpperCase()}
+                      </span>
+                    </div>
+                    <Tiny>{rankStatusText(r)}</Tiny>
+                    <Tiny style={{ display: 'block' }}>
+                      {r.games} match{r.games === 1 ? '' : 'es'} · upgrade ceiling:{' '}
+                      <b style={{ color: 'var(--text)' }}>{maxRankedUpgradeFor(tierForRating(r.rating))}</b> levels per stat
+                    </Tiny>
+                    {ratingToNextBand(r.rating) !== null && (
+                      <Tiny style={{ display: 'block', marginTop: 4 }}>
+                        <b style={{ color: 'var(--accent)' }}>{ratingToNextBand(r.rating)! - r.rating} RP</b> to next rank
+                      </Tiny>
+                    )}
+                  </div>
+                );
+              })}
             </>
           ) : (
             <>
@@ -93,8 +112,8 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
                 🔒 Locked
               </div>
               <Tiny style={{ display: 'block' }}>
-                Reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play, ranked stat upgrades and the
-                competitive ladder.
+                Reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play, ranked stat upgrades and both
+                competitive ladders (1v1 &amp; 5v5).
               </Tiny>
             </>
           )}

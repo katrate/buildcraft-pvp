@@ -248,9 +248,9 @@ export class MatchmakingQueue {
     private botFillWaitMs = MATCHMAKING_BOT_FILL_WAIT_MS,
     private rankWidenAfterMs = RANKED_WINDOW_WIDEN_AFTER_MS,
   ) {
-    // Seed every mode×size queue. ranked:1 / ranked:2 are unreachable through
-    // join_queue (ranked is 5v5 only) but are still iterated by leave/leaveParty,
-    // so they are seeded empty rather than omitted.
+    // Seed every mode×size queue. ranked:2 is unreachable through join_queue
+    // (ranked is 1v1 or 5v5 — never 2v2) but is still iterated by
+    // leave/leaveParty, so it is seeded empty rather than omitted.
     for (const mode of ['unranked', 'ranked'] as const) {
       for (const ts of [1, 2, 5] as const) {
         this.queues.set(queueKey(mode, ts), []);
@@ -336,7 +336,7 @@ export class MatchmakingQueue {
         const q = this.queues.get(key)!;
         if (q.length === 0) continue;
         if (mode === 'ranked') {
-          if (teamSize !== 5) continue; // ranked is 5v5 only — no 1v1/2v2
+          if (teamSize === 2) continue; // ranked is 1v1 or 5v5 — never 2v2
           this.tryStartRanked(key, q, teamSize);
           continue;
         }

@@ -39,7 +39,7 @@ export function Play(props: {
   const [queue, setQueue] = useState<null | { teamSize: 1 | 2 | 5; count: number; mode: PvpMode; queuedSince: number }>(null);
   const [now, setNow] = useState(() => Date.now());
   const activePreset = getActivePreset();
-  const ranked = rankForRating(player.rank.rating);
+  const ranked = rankForRating(player.ranks['5v5'].rating);
   const partySize = party ? party.members.length : 0;
   const inParty = partySize > 0;
   const inQueue = queue !== null;
@@ -83,6 +83,11 @@ export function Play(props: {
 
   function joinQueue(teamSize: 1 | 2 | 5, mode: PvpMode): void {
     connectSocket();
+    // Each ranked format has its OWN ladder (separate rating + upgrades), so
+    // the queue payload carries that format's pool. Unranked ignores both.
+    const format: '1v1' | '5v5' = teamSize === 1 ? '1v1' : '5v5';
+    const rankedUpgrades = player.rankedUpgrades[format];
+    const rating = player.ranks[format].rating;
     if (inParty) {
       setQueue({ teamSize, count: 0, mode, queuedSince: Date.now() });
       queueParty(teamSize, mode);
@@ -97,8 +102,8 @@ export function Play(props: {
       mode,
       preset: activePreset,
       initiativeUpgrade: player.initiativeUpgrade,
-      rankedUpgrades: player.rankedUpgrades,
-      rating: player.rank.rating,
+      rankedUpgrades,
+      rating,
     });
   }
 
@@ -107,7 +112,9 @@ export function Play(props: {
     sendMessage({ type: 'leave_queue', playerId: player.playerId, partyId: party?.partyId ?? undefined });
   }
 
-  const leaderTier = party ? tierForRating(player.rank.rating) : 0;
+  // Parties queue the 5v5 ladder — the ±1 rank rule anchors on the leader's
+  // 5v5 rank.
+  const leaderTier = party ? tierForRating(player.ranks['5v5'].rating) : 0;
   const leaderBand = party ? RATING_BANDS[leaderTier] : null;
   const unreadyMembers = party ? party.members.filter((m) => !m.ready) : [];
   const allReady = unreadyMembers.length === 0;
@@ -227,36 +234,56 @@ export function Play(props: {
             <>
               <ModeDesc>
                 <span style={{ color: ranked.color, fontWeight: 700 }}>{ranked.name.toUpperCase()}</span> ·{' '}
-                {rankStatusText(player.rank)}. Ranked is <b>5v5 only</b> — real players only, no bots, so a
-                match needs <b>10 players</b> in your rank window. Win to gain RP, lose to drop. You face
-                players within ±1 rank, widening to ±2 after ~{Math.round(RANKED_WINDOW_WIDEN_AFTER_MS / 1000)}s
-                of waiting.
+                {rankStatusText(player.ranks['5v5'])}. Ranked has <b>two ladders</b>: <b>1v1</b> (solo) and{' '}
+                <b>5v5</b> (parties up to 5) — each with its <b>own rank</b> and its <b>own stat upgrades</b>.
+                Real players only, no bots, so a 5v5 needs 10 players in your rank window. Win to gain RP,
+                lose to drop. You face players within ±1 rank, widening to ±2 after ~
+                {Math.round(RANKED_WINDOW_WIDEN_AFTER_MS / 1000)}s of waiting.
                 {inParty && leaderBand
-                  ? ` Ranked party rule: everyone within ±1 rank of the leader (${leaderBand.name}); parties under 5 fill their empty slots with real players.`
+                  ? ` Parties queue the 5v5 ladder: everyone within ±1 rank of the leader (${leaderBand.name}); empty slots fill with real players.`
                   : ''}
               </ModeDesc>
               {queueStatus('ranked') ?? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  disabled={status !== 'connected' || rankedTooBig || rankedNotReady || (inQueue && queue.mode !== 'ranked')}
-                  title={
-                    status !== 'connected'
-                      ? 'Server offline'
-                      : inQueue && queue.mode !== 'ranked'
-                        ? 'Already in the unranked queue — cancel first'
-                        : rankedTooBig
-                          ? 'Ranked is 5v5 — parties of 6+ cannot queue ranked'
-                          : rankedNotReady
-                            ? `Waiting for ${unreadyNames} to ready up…`
-                            : inParty
-                              ? `Queue your whole party (${partySize}) for ranked 5v5 — empty slots fill with real players`
-                              : 'Join ranked 5v5'
-                  }
-                  onClick={() => joinQueue(5, 'ranked')}
-                >
-                  Ranked 5v5
-                </Button>
+                <Row wrap>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    disabled={status !== 'connected' || inParty || (inQueue && queue.mode !== 'ranked')}
+                    title={
+                      status !== 'connected'
+                        ? 'Server offline'
+                        : inQueue && queue.mode !== 'ranked'
+                          ? 'Already in the unranked queue — cancel first'
+                          : inParty
+                            ? 'Ranked 1v1 is solo only — use 5v5 for parties'
+                            : 'Join ranked 1v1 (its own ladder & upgrades)'
+                    }
+                    onClick={() => joinQueue(1, 'ranked')}
+                  >
+                    Ranked 1v1
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    disabled={status !== 'connected' || rankedTooBig || rankedNotReady || (inQueue && queue.mode !== 'ranked')}
+                    title={
+                      status !== 'connected'
+                        ? 'Server offline'
+                        : inQueue && queue.mode !== 'ranked'
+                          ? 'Already in the unranked queue — cancel first'
+                          : rankedTooBig
+                            ? 'Ranked 5v5 — parties of 6+ cannot queue ranked'
+                            : rankedNotReady
+                              ? `Waiting for ${unreadyNames} to ready up…`
+                              : inParty
+                                ? `Queue your whole party (${partySize}) for ranked 5v5 — empty slots fill with real players`
+                                : 'Join ranked 5v5 (its own ladder & upgrades)'
+                    }
+                    onClick={() => joinQueue(5, 'ranked')}
+                  >
+                    Ranked 5v5
+                  </Button>
+                </Row>
               )}
             </>
           ) : (
