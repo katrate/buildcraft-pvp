@@ -465,10 +465,31 @@ export const Toast = styled.div`
   ${cutCorners(12)}
   padding: 12px 24px;
   color: var(--text);
-  border-color: rgba(255,70,85,0.6);
+  border-color: rgba(130,148,201,0.5);
   z-index: 200;
   animation: glass-toast 0.25s ease;
   filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));
+`;
+
+// Floating matchmaking timer — pinned above every screen while queued.
+export const QueueFloater = styled.div`
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  ${angularSurface}
+  ${cutCorners(10)}
+  border-color: rgba(130, 148, 201, 0.45);
+  background: rgba(18, 21, 28, 0.92);
+  backdrop-filter: blur(14px) saturate(92%);
+  -webkit-backdrop-filter: blur(14px) saturate(92%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: glass-toast 0.25s ease;
 `;
 
 // ------------------------------------------------------------
@@ -623,8 +644,8 @@ export const NavRail = styled.div`
   gap: 6px;
   padding: 26px 16px 20px;
   background: rgba(7, 9, 14, 0.72);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(92%);
+  -webkit-backdrop-filter: blur(16px) saturate(92%);
   border-right: 1px solid rgba(255,255,255,0.1);
   overflow-y: auto;
   position: relative;

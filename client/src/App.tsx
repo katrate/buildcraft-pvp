@@ -10,8 +10,9 @@ import { CombatPractice } from './screens/CombatPractice';
 import { CombatOnline, type OnlineEndInfo, type OnlineMatchInfo } from './screens/CombatOnline';
 import { CountdownScreen } from './screens/Countdown';
 import { usePlayer, grantRewards, recordMatch, applyRankDelta } from './state/store';
-import { connectSocket, subscribeMessages } from './services/ws';
-import { AppShell, Brand, Chip, MenuScreen, Muted, Stats, Toast, TopBar } from './ui/glass';
+import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
+import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
+import { AppShell, Brand, Button, Chip, MenuScreen, Muted, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
 
 type AppScreen = Screen | 'intro' | 'countdown';
 
@@ -33,11 +34,27 @@ export function App() {
   const [endInfo, setEndInfo] = useState<OnlineEndInfo | null>(null);
   const [countdown, setCountdown] = useState<MatchCountdown | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const queue = useQueue();
+  const [now, setNow] = useState(() => Date.now());
+  const wsStatus = useWsStatus();
 
   // Keep a live socket for the whole session
   useEffect(() => {
     connectSocket();
   }, []);
+
+  // If the socket drops while queued, the server already pulled us out of the
+  // queue — clear the timer so it never shows a dead "Searching…" state.
+  useEffect(() => {
+    if (wsStatus === 'disconnected') clearQueue();
+  }, [wsStatus]);
+
+  // Live clock for the floating queue timer (ticked while queued).
+  useEffect(() => {
+    if (!queue) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [queue]);
 
   useEffect(() => {
     if (!toast) return;
@@ -49,9 +66,29 @@ export function App() {
   useEffect(() => {
     return subscribeMessages((msg) => {
       switch (msg.type) {
+        case 'queue_update':
+          // The queue is global — it keeps searching no matter which screen we
+          // are on. queued === 0 means the server pulled us out.
+          if (msg.queued === 0) {
+            clearQueue();
+            break;
+          }
+          {
+            const q = getQueue();
+            if (!q) {
+              setQueue({ teamSize: msg.teamSize, mode: msg.mode, count: msg.queued, queuedSince: msg.queuedSince ?? Date.now() });
+            } else if (q.teamSize === msg.teamSize && q.mode === msg.mode) {
+              setQueue({ ...q, count: msg.queued, queuedSince: msg.queuedSince ?? q.queuedSince });
+            }
+          }
+          break;
+        case 'queue_left':
+          clearQueue();
+          break;
         case 'match_found':
-          // Match formed — show the loading/countdown screen until the server
-          // sends match_start (it fires exactly when the countdown ends).
+          // Match formed — stop searching and show the loading/countdown screen
+          // until the server sends match_start (it fires when the countdown ends).
+          clearQueue();
           setCountdown({
             matchId: msg.matchId,
             mode: msg.mode,
@@ -153,6 +190,22 @@ export function App() {
         <MenuScreen>
           <Muted>Waiting for match…</Muted>
         </MenuScreen>
+      )}
+
+      {/* Floating matchmaking timer — visible on top of every screen while queued */}
+      {queue && (
+        <QueueFloater>
+          <Spinner />
+          <b>
+            Searching {queue.teamSize}v{queue.teamSize} · {queue.mode.toUpperCase()}
+          </b>
+          <Tiny>
+            {Math.max(0, Math.floor((now - queue.queuedSince) / 1000))}s · {queue.count} in queue
+          </Tiny>
+          <Button variant="danger" size="sm" onClick={leaveQueue}>
+            Cancel
+          </Button>
+        </QueueFloater>
       )}
 
       {toast && <Toast>{toast}</Toast>}

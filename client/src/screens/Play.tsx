@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { usePlayer, getActivePreset } from '../state/store';
 import { useParty, queueParty } from '../state/party';
+import { useQueue, setQueue, leaveQueue } from '../state/queue';
 import { CustomPanel } from '../components/CustomPanel';
 import { PartyPanel } from '../components/PartyPanel';
-import { sendMessage, subscribeMessages, useWsStatus, connectSocket } from '../services/ws';
+import { sendMessage, useWsStatus, connectSocket } from '../services/ws';
 import { MATCHMAKING_BOT_FILL_WAIT_MS, RANKED_UNLOCK_LEVEL, RANKED_WINDOW_WIDEN_AFTER_MS } from '../../../shared/src/constants';
 import { isRankedUnlocked, rankForRating, rankStatusText } from '../../../shared/src/progression';
 import { RATING_BANDS, tierForRating } from '../../../shared/src/rating';
@@ -36,7 +37,9 @@ export function Play(props: {
   const player = usePlayer();
   const status = useWsStatus();
   const { party } = useParty();
-  const [queue, setQueue] = useState<null | { teamSize: 1 | 2 | 5; count: number; mode: PvpMode; queuedSince: number }>(null);
+  // The queue is global (client/src/state/queue.ts) — it survives navigation,
+  // and the floating timer on top of every screen shows its status.
+  const queue = useQueue();
   const [now, setNow] = useState(() => Date.now());
   const activePreset = getActivePreset();
   const ranked = rankForRating(player.ranks['5v5'].rating);
@@ -51,36 +54,6 @@ export function Play(props: {
     return () => clearInterval(t);
   }, [inQueue]);
 
-  // Subscribe to queue updates while on this screen.
-  useEffect(() => {
-    const unsub = subscribeMessages((msg) => {
-      if (msg.type === 'queue_left') {
-        setQueue(null); // party broken up / pulled out — stop showing "searching…"
-        return;
-      }
-      if (msg.type === 'queue_update') {
-        if (msg.queued === 0) {
-          setQueue(null); // we were pulled out (e.g. leader cancelled the party queue)
-          return;
-        }
-        setQueue((q) => {
-          const queuedSince = msg.queuedSince ?? q?.queuedSince ?? Date.now();
-          if (q && q.teamSize === msg.teamSize && q.mode === msg.mode) {
-            return { teamSize: msg.teamSize, count: msg.queued, mode: msg.mode, queuedSince };
-          }
-          if (!q && inParty) return { teamSize: msg.teamSize, count: msg.queued, mode: msg.mode, queuedSince };
-          return q;
-        });
-      }
-    });
-    return () => {
-      unsub();
-      // Pull the whole party out of the queue when leaving this screen while queued.
-      sendMessage({ type: 'leave_queue', playerId: player.playerId, partyId: party?.partyId ?? undefined });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player.playerId, party?.partyId]);
-
   function joinQueue(teamSize: 1 | 2 | 5, mode: PvpMode): void {
     connectSocket();
     // Each ranked format has its OWN ladder (separate rating + upgrades), so
@@ -88,12 +61,11 @@ export function Play(props: {
     const format: '1v1' | '5v5' = teamSize === 1 ? '1v1' : '5v5';
     const rankedUpgrades = player.rankedUpgrades[format];
     const rating = player.ranks[format].rating;
+    setQueue({ teamSize, count: 0, mode, queuedSince: Date.now() });
     if (inParty) {
-      setQueue({ teamSize, count: 0, mode, queuedSince: Date.now() });
       queueParty(teamSize, mode);
       return;
     }
-    setQueue({ teamSize, count: 0, mode, queuedSince: Date.now() });
     sendMessage({
       type: 'join_queue',
       playerId: player.playerId,
@@ -105,11 +77,6 @@ export function Play(props: {
       rankedUpgrades,
       rating,
     });
-  }
-
-  function leaveQueue(): void {
-    setQueue(null);
-    sendMessage({ type: 'leave_queue', playerId: player.playerId, partyId: party?.partyId ?? undefined });
   }
 
   // Parties queue the 5v5 ladder — the ±1 rank rule anchors on the leader's

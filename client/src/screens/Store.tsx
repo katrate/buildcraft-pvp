@@ -6,7 +6,7 @@ import { getAllPotions } from '../../../shared/src/game-data/potions';
 import type { PowerKind } from '../../../shared/src/types';
 import { ItemCard } from '../components/ItemCard';
 import { BackButton } from '../components/BackButton';
-import { Chip, ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Toast, Tiny } from '../ui/glass';
+import { ItemGrid, Kicker, Row, Screen, ScreenHead, ScreenTitle, Tab, Tabs, Toast, Tiny } from '../ui/glass';
 
 type StoreTab = 'cores' | 'actives' | 'buffs' | 'ultimates' | 'gear' | 'potions';
 
@@ -71,7 +71,6 @@ export function Store(props: { onBack: () => void }) {
           <ScreenTitle>Store</ScreenTitle>
         </div>
         <Row>
-          <Chip tone="warn">🪙 {player.coins} coins</Chip>
           <BackButton onBack={props.onBack} />
         </Row>
       </ScreenHead>

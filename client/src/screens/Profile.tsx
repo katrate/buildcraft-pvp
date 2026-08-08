@@ -41,7 +41,6 @@ export function Profile(props: { onNavigate: (s: 'menu' | 'build') => void }) {
           <ScreenTitle>{player.name}</ScreenTitle>
         </div>
         <Row>
-          <Chip tone="warn">🪙 {player.coins} coins</Chip>
           <BackButton onBack={() => props.onNavigate('menu')} />
         </Row>
       </ScreenHead>
