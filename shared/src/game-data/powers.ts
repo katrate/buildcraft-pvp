@@ -51,7 +51,7 @@ define({
   id: 'poison', name: 'Poison', description: '15 base damage plus your Attack, then 6 damage per turn for 3 turns.',
   kind: 'power', powerKind: 'active', slot: 'active1', price: 1000, rarity: 'common',
   uses: 2, attack: 15, targetRule: 'enemy', damageType: 'poison',
-  effects: [{ kind: 'poison', amount: 8, duration: 3 }], aiPriority: 6,
+  effects: [{ kind: 'poison', amount: 8, duration: 3 }], aiPriority: 7, // 15 + 8x3 DoT = 39 total — higher than fire_bolt but delayed
 });
 define({
   id: 'berserk', name: 'Berserk', description: '+40% Attack but -15% Defense for 3 turns.',
@@ -77,12 +77,12 @@ define({
   id: 'thunder_bolt', name: 'Thunder Bolt', description: '34 base damage plus your Attack, and stun the target for 1 turn.',
   kind: 'power', powerKind: 'active', slot: 'active1', price: 2000, rarity: 'rare',
   uses: 2, attack: 34, targetRule: 'enemy', damageType: 'lightning',
-  effects: [{ kind: 'stun', amount: 1, duration: 1 }], aiPriority: 7,
+  effects: [{ kind: 'stun', amount: 1, duration: 1 }], aiPriority: 9, // best single-target: 34 dmg + stun
 });
 define({
   id: 'fireball', name: 'Fireball', description: 'Blast ALL enemies for 24 base damage plus your Attack.',
   kind: 'power', powerKind: 'active', slot: 'active1', price: 2000, rarity: 'rare',
-  uses: 1, attack: 24, targetRule: 'all-enemies', damageType: 'fire', aiPriority: 8,
+  uses: 1, attack: 24, targetRule: 'all-enemies', damageType: 'fire', aiPriority: 6, // in 1v1 it's 24 dmg — below fire_bolt (30); AoE value in teams
 });
 define({
   id: 'rally', name: 'Rally', description: 'All allies gain +20% Attack for 2 turns.',

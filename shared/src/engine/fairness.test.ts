@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { GEAR } from '../game-data/gear';
+import { BOT_PRESETS, NPC_TEMPLATES } from '../game-data/npcs';
 import { POWERS } from '../game-data/powers';
 import type { Preset } from '../types';
-import { practiceEnemyInput } from './practice';
-import { applyAction, createMatch, isMyTurn } from './combat';
+import { chooseBotAction } from './ai';
+import { applyAction, computeDamage, createMatch, isMyTurn, makeCombatant } from './combat';
+import { createPracticeMatch, playerCombatantInput } from './practice';
 import { computePvpBuild, computeStats } from './stats';
 import { normalizeUnranked } from './normalize';
 
@@ -10,15 +13,60 @@ function preset(slots: Record<string, string | null>): Preset {
   return { id: 'p', name: 'p', createdAt: 0, slots };
 }
 
-describe('fairness: practice NPCs never mutate shared data', () => {
-  it('building the practice NPC does not mutate global power definitions', () => {
-    const before = POWERS.poison.effects![0].amount;
-    const npc = practiceEnemyInput();
-    // The NPC's own build is freshly cloned…
-    const poisonFx = npc.build.actives.find((p) => p.id === 'poison')?.effects?.[0];
-    expect(poisonFx).toBeDefined();
-    // …while the global definition is untouched.
-    expect(POWERS.poison.effects![0].amount).toBe(before);
+function allNpcPresets(): Preset[] {
+  return [...Object.values(NPC_TEMPLATES).map((t) => t.preset), ...BOT_PRESETS.map((b) => b.preset)];
+}
+
+describe('fairness: NPC/bot builds never mutate shared data', () => {
+  it('building every NPC and bot preset does not mutate global power or gear definitions', () => {
+    const pSnapshot = new Map(Object.entries(POWERS).map(([id, p]) => [id, JSON.stringify(p)]));
+    const gSnapshot = new Map(Object.entries(GEAR).map(([id, g]) => [id, JSON.stringify(g)]));
+    for (const p of allNpcPresets()) computeStats(p);
+    for (const [id, p] of Object.entries(POWERS)) {
+      expect(JSON.stringify(p), `power ${id} was mutated`).toBe(pSnapshot.get(id));
+    }
+    for (const [id, g] of Object.entries(GEAR)) {
+      expect(JSON.stringify(g), `gear ${id} was mutated`).toBe(gSnapshot.get(id));
+    }
+  });
+});
+
+describe('fairness: bots/NPCs are tuned to the new damage scale', () => {
+  // A bare starter: fire bolt + iron sword, no armor → def 5, HP 200.
+  const starter = makeCombatant({
+    id: 'starter', name: 'Starter', playerId: 'u0', isBot: false,
+    build: computeStats(preset({ active1: 'fire_bolt', weapon: 'iron_sword' })),
+  });
+
+  it('no bot or NPC power can one-shot a full-HP starter', () => {
+    for (const p of allNpcPresets()) {
+      const build = computeStats(p);
+      const bot = makeCombatant({ id: `bot_${p.id}`, name: 'bot', playerId: null, isBot: true, build });
+      for (const power of [...build.actives, ...(build.ultimate ? [build.ultimate] : [])]) {
+        if ((power.attack ?? 0) <= 0) continue;
+        const dmg = computeDamage(bot, starter, power);
+        expect(dmg, `${p.name}: ${power.name} deals ${dmg} — must not one-shot ${starter.maxHp} HP`).toBeLessThan(
+          starter.maxHp,
+        );
+      }
+    }
+  });
+
+  it('a starter build can win practice — the NPC is tuned to be beatable', () => {
+    const player = playerCombatantInput({
+      playerId: 'u1', name: 'Starter',
+      preset: preset({ active1: 'fire_bolt', weapon: 'iron_sword' }),
+    });
+    const s = createPracticeMatch('practice-fairness', player);
+    // Balance guard: 1v1 can run up to MAX_ROUNDS (100) rounds = ~200 actions,
+    // so the loop budget must exceed that for the timeout-win path to be reached.
+    let guard = 0;
+    while (s.phase !== 'MATCH_END' && guard < 250) {
+      guard += 1;
+      applyAction(s, chooseBotAction(s, s.currentCombatantId!));
+    }
+    expect(s.phase).toBe('MATCH_END');
+    expect(s.winnerTeam).toBe(0); // player's team is team 0
   });
 });
 
