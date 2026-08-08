@@ -9,6 +9,7 @@ import {
   type FriendRequestRow,
 } from './db';
 import { getState, setFriendsList } from './store';
+import { sendMessage, subscribeMessages } from '../services/ws';
 
 // ------------------------------------------------------------
 // Friends (Supabase-driven).
@@ -17,6 +18,9 @@ import { getState, setFriendsList } from './store';
 // the pending request queues (incoming/outgoing) live here. Every mutation
 // goes through the DB (RPCs + friend_requests table) and refreshes both.
 // No player needs to be online to send/accept a request — it's pure DB.
+// Online/offline status (the `online` set) is live server presence: the
+// panel asks the server which friends are connected (refreshPresence) and
+// the answers keep the dots current.
 // ------------------------------------------------------------
 
 export interface FriendsState {
@@ -24,9 +28,11 @@ export interface FriendsState {
   outgoing: FriendRequestRow[];
   loading: boolean;
   notice: { text: string; ok: boolean } | null;
+  /** Friend ids currently connected — drives the online/offline dots. null = not queried yet. */
+  online: string[] | null;
 }
 
-let state: FriendsState = { incoming: [], outgoing: [], loading: true, notice: null };
+let state: FriendsState = { incoming: [], outgoing: [], loading: true, notice: null, online: null };
 
 const listeners = new Set<() => void>();
 
@@ -47,6 +53,28 @@ export function useFriends(): FriendsState {
   return useSyncExternalStore(subscribeFriends, getFriends);
 }
 
+// Server presence answers keep the online dots current (sent in response to
+// refreshPresence's presence_query).
+subscribeMessages((msg) => {
+  if (msg.type === 'presence_result') {
+    state = { ...state, online: msg.online };
+    emit();
+  }
+});
+
+/** Ask the server which of our friends are online right now. */
+export function refreshPresence(): void {
+  const me = getState().playerId;
+  const friends = getState().friends;
+  if (!me || friends.length === 0) {
+    if (state.online !== null && state.online.length === 0) return;
+    state = { ...state, online: [] };
+    emit();
+    return;
+  }
+  sendMessage({ type: 'presence_query', playerId: me, ids: friends.map((f) => f.playerId) });
+}
+
 // ------------------------------------------------------------
 // Data
 // ------------------------------------------------------------
@@ -59,6 +87,7 @@ export async function refreshFriends(): Promise<void> {
   setFriendsList(data.friends);
   state = { ...state, incoming: data.incoming, outgoing: data.outgoing, loading: false };
   emit();
+  refreshPresence(); // friends changed — re-ask who's online
 }
 
 // ------------------------------------------------------------

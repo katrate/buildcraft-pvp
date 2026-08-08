@@ -148,6 +148,10 @@ class TestClient {
     this.send({ type: 'surrender', playerId: this.playerId });
   }
 
+  queryPresence(ids: string[]): void {
+    this.send({ type: 'presence_query', playerId: this.playerId, ids });
+  }
+
   private shouldAutoAct(): boolean {
     if (!this.automation) return false;
     const s = this.match;
@@ -189,6 +193,32 @@ describe('multiplayer integration', () => {
     if (server) await server.close();
     server = null;
   });
+
+  it('reports friend presence: presence_query returns exactly the online ids', async () => {
+    server = await startGameServer(0, { allowUnauthenticated: true });
+    const url = `ws://127.0.0.1:${server.port}`;
+    const a = new TestClient(url, 'pres_a');
+    const b = new TestClient(url, 'pres_b');
+    await Promise.all([a.ready(), b.ready()]);
+    a.hello();
+    b.hello();
+    await new Promise((r) => setTimeout(r, 200));
+
+    a.queryPresence(['pres_a', 'pres_b', 'ghost']);
+    await a.waitFor((m) => m.some((x) => x.type === 'presence_result'));
+    const res = a.messages.find((m): m is Extract<ServerMessage, { type: 'presence_result' }> => m.type === 'presence_result')!;
+    expect(res.online.slice().sort()).toEqual(['pres_a', 'pres_b']);
+
+    // When a friend disconnects, a fresh query no longer lists them.
+    b.close();
+    await new Promise((r) => setTimeout(r, 200));
+    const before = a.messages.filter((m) => m.type === 'presence_result').length;
+    a.queryPresence(['pres_a', 'pres_b']);
+    await a.waitFor((m) => m.filter((x) => x.type === 'presence_result').length > before);
+    const res2 = a.messages.filter((m): m is Extract<ServerMessage, { type: 'presence_result' }> => m.type === 'presence_result').at(-1)!;
+    expect(res2.online).toEqual(['pres_a']);
+    a.close();
+  }, 15000);
 
   it('ends a 1v1 instantly when either player surrenders (defeat)', async () => {
     server = await startGameServer(0, { allowUnauthenticated: true, botThinkMs: 5, botFillWaitMs: 2000, matchCountdownMs: 5 });

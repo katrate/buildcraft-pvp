@@ -373,6 +373,9 @@ export type ClientMessage =
   | { type: 'surrender'; playerId: string }
   // The muted player clicked back in — their turns stop being skipped.
   | { type: 'afk_return'; playerId: string }
+  // Which of these friend ids are currently online (drives the friend list's
+  // online/offline dots). Server answers with presence_result.
+  | { type: 'presence_query'; playerId: string; ids: string[] }
   // presence & party flow. With Supabase accounts, `hello` carries the
   // access token so the server can bind the socket to the verified user id
   // (it overrides playerId when valid).
@@ -424,6 +427,7 @@ export type ServerMessage =
       notice?: { combatantId: string; text: string } | null;
     }
   | { type: 'rejoin_result'; active: boolean } // you asked to rejoin and there was no active match
+  | { type: 'presence_result'; online: string[] } // friend ids currently connected (subset of a presence_query)
   | {
       type: 'match_end';
       matchId: string;

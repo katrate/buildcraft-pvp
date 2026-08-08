@@ -190,6 +190,11 @@ export function startGameServer(
           });
           break;
         }
+        case 'presence_query': {
+          // Friend-list presence: which of the requested ids are online right now.
+          send({ type: 'presence_result', online: partyManager.onlineSubset(msg.ids ?? []) });
+          break;
+        }
         case 'custom_create': {
           if (partyManager.isInParty(msg.playerId)) {
             send({ type: 'error', message: 'Leave your party before creating a custom lobby.' });

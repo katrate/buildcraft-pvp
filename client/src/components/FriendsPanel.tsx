@@ -5,24 +5,38 @@ import {
   cancelFriendRequest,
   clearFriendNotice,
   declineFriendRequest,
+  refreshPresence,
   removeFriend,
   sendFriendRequest,
   useFriends,
 } from '../state/friends';
 import { inviteFriend } from '../state/party';
+import { socketOpen } from '../services/ws';
 import { Button, Chip, Col, Divider, Input, Row, Tiny, UpgradeRow } from '../ui/glass';
 
 /**
  * Friends — fully Supabase-driven. Add players by username (no "must be
  * online" requirement anymore), see incoming/outgoing requests, and remove
- * friends. Party invites still need the friend online (parties are live
- * sessions), which the server tells us about.
+ * friends. Live online/offline dots come from server presence, refreshed on
+ * mount and every few seconds. Party invites still need the friend online
+ * (parties are live sessions) — the Invite button is disabled while offline.
  */
 export function FriendsPanel() {
   const player = usePlayer();
-  const { incoming, outgoing, loading, notice } = useFriends();
+  const { incoming, outgoing, loading, notice, online } = useFriends();
   const [friendName, setFriendName] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Keep the online/offline dots fresh: query on mount, then poll while the
+  // panel is open (skipping while the socket is down — the mount query covers
+  // freshness after a reconnect). Re-queries whenever the friend list changes.
+  useEffect(() => {
+    refreshPresence();
+    const t = setInterval(() => {
+      if (socketOpen()) refreshPresence();
+    }, 10_000);
+    return () => clearInterval(t);
+  }, [player.friends.length]);
 
   // Transient feedback — the notice auto-clears after 5s so it never lingers.
   useEffect(() => {
@@ -109,24 +123,32 @@ export function FriendsPanel() {
         </Tiny>
       ) : (
         <Col gap={6}>
-          {player.friends.map((f) => (
-            <UpgradeRow key={f.playerId}>
-              <div>
-                <b>{f.name}</b>
-                <Chip tone="good" style={{ marginLeft: 8 }}>
-                  friend
-                </Chip>
-              </div>
-              <Row gap={8}>
-                <Button size="sm" onClick={() => inviteFriend(f.playerId)}>
-                  Invite
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => void removeFriend(f.playerId)}>
-                  Remove
-                </Button>
-              </Row>
-            </UpgradeRow>
-          ))}
+          {player.friends.map((f) => {
+            // null = the server hasn't answered yet — never imply offline.
+            const isOnline = online?.includes(f.playerId) ?? false;
+            return (
+              <UpgradeRow key={f.playerId}>
+                <div>
+                  <b>{f.name}</b>
+                  {online === null ? (
+                    <Chip style={{ marginLeft: 8 }}>…</Chip>
+                  ) : (
+                    <Chip tone={isOnline ? 'good' : 'offline'} style={{ marginLeft: 8 }}>
+                      {isOnline ? '● online' : '○ offline'}
+                    </Chip>
+                  )}
+                </div>
+                <Row gap={8}>
+                  <Button size="sm" disabled={online !== null && !isOnline} onClick={() => inviteFriend(f.playerId)}>
+                    Invite
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => void removeFriend(f.playerId)}>
+                    Remove
+                  </Button>
+                </Row>
+              </UpgradeRow>
+            );
+          })}
         </Col>
       )}
     </Col>

@@ -75,6 +75,11 @@ export class PartyManager {
     return undefined;
   }
 
+  /** Which of the given player ids are currently connected (friend presence). */
+  onlineSubset(ids: string[]): string[] {
+    return ids.filter((id) => this.online.has(id));
+  }
+
   // ---------------- parties ----------------
 
   getPartyOf(playerId: string): Party | undefined {
