@@ -135,7 +135,9 @@ export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
             <Tiny style={{ letterSpacing: '0.16em', color: 'var(--text)' }}>
               Level {player.level} → {player.level + 1}
             </Tiny>
-            <Tiny>Ranked unlocks at level {RANKED_UNLOCK_LEVEL}</Tiny>
+            {!isRankedUnlocked(player.level) && (
+              <Tiny>Ranked unlocks at level {RANKED_UNLOCK_LEVEL}</Tiny>
+            )}
           </div>
           <Track h={10}>
             <Fill pct={progressToNextLevel(player.level, player.xp) * 100} color="var(--accent)" />
