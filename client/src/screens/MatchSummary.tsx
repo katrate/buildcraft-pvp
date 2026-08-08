@@ -335,7 +335,16 @@ const RESULT_TEXT: Record<PlayerResult, string> = {
 
 export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onRematch?: () => void }): JSX.Element {
   const player = usePlayer();
-  const { stats, rewards } = props;
+  // Defensive: a stale server (or a crashed engine) must never blank the whole
+  // app. Default missing stats to an empty list and missing breakdown to null.
+  const stats = props.stats ?? [];
+  const rewards = props.rewards ?? {
+    result: props.result,
+    xp: 0,
+    coins: 0,
+    roundsSurvived: 0,
+    breakdown: undefined,
+  };
 
   const xpAni = useCountUp(rewards.xp);
   const coinAni = useCountUp(rewards.coins);
@@ -352,8 +361,12 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
   const xpFrom = Math.min(1, props.levelFrom === player.level ? progressToNextLevel(props.levelFrom, props.xpFrom) : 1);
 
   // Rank progress (ranked only).
-  const rankBand = props.rankFormat ? bandForRating(player.ranks[props.rankFormat].rating) : null;
-  const ratingTo = props.rankFormat ? player.ranks[props.rankFormat].rating : 0;
+  const rankRating =
+    props.rankFormat && player.ranks && player.ranks[props.rankFormat]
+      ? player.ranks[props.rankFormat].rating
+      : 0;
+  const rankBand = props.rankFormat && rankRating > 0 ? bandForRating(rankRating) : null;
+  const ratingTo = rankRating;
   const rpTo = props.rankFormat ? progressInBand(ratingTo) : 0;
   const rpFrom = props.ratingFrom !== undefined ? progressInBand(props.ratingFrom) : 0;
 

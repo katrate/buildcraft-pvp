@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePlayer } from '../state/store';
 import {
   acceptFriendRequest,
   cancelFriendRequest,
+  clearFriendNotice,
   declineFriendRequest,
   removeFriend,
   sendFriendRequest,
@@ -22,6 +23,13 @@ export function FriendsPanel() {
   const { incoming, outgoing, loading, notice } = useFriends();
   const [friendName, setFriendName] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Transient feedback — the notice auto-clears after 5s so it never lingers.
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(clearFriendNotice, 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
 
   async function add(): Promise<void> {
     const name = friendName.trim();

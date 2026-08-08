@@ -9,7 +9,7 @@ import { CombatPractice } from './screens/CombatPractice';
 import { CombatOnline, type OnlineMatchInfo } from './screens/CombatOnline';
 import { MatchSummary, type MatchSummaryData } from './screens/MatchSummary';
 import { CountdownScreen } from './screens/Countdown';
-import { usePlayer, getState, grantRewards, recordMatch, applyRankDelta } from './state/store';
+import { usePlayer, getState, grantRewards, recordMatch, applyRankDelta, defaultState } from './state/store';
 import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
 import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
@@ -122,14 +122,18 @@ export function App() {
           break;
         case 'match_end': {
           // Snapshot pre-grant progress so the stats screen can animate the
-          // XP / RP bars from the old position to the new one.
+          // XP / RP bars from the old position to the new one. EVERYTHING here
+          // is defensive: the WebSocket dispatcher catches listener errors, so
+          // any throw would leave the player stuck on the ended arena with NO
+          // visible error. Build the summary payload FIRST (pure, can't throw),
+          // then apply rewards inside a guard — and ALWAYS show the summary.
           const before = getState();
           const format = msg.teamSize === 1 ? '1v1' : '5v5';
-          const ratingFrom = before.ranks[format].rating;
-          grantRewards(msg.rewards);
-          // Ranked ladders are per-format: a 1v1 match updates the 1v1 rank,
-          // a 5v5 match updates the 5v5 rank.
-          if (msg.rankDelta !== undefined) applyRankDelta(msg.rankDelta, format);
+          const ratingFrom =
+            before.ranks && before.ranks[format]
+              ? before.ranks[format].rating
+              : defaultState().ranks[format].rating;
+          // Summary is derived from the server payload — never crashes.
           setSummary({
             result: msg.result,
             winnerTeam: msg.winnerTeam,
@@ -138,12 +142,22 @@ export function App() {
             rewards: msg.rewards,
             rankDelta: msg.rankDelta,
             rankFormat: msg.rankDelta !== undefined ? format : undefined,
-            stats: msg.stats,
+            stats: msg.stats ?? [], // a stale server may omit stats — never crash the screen
             levelFrom: before.level,
             xpFrom: before.xp,
             ratingFrom: msg.rankDelta !== undefined ? ratingFrom : undefined,
           });
-          recordMatch(msg.result);
+          // Rewards are a best-effort side effect; a failure here must never
+          // hide the result screen.
+          try {
+            grantRewards(msg.rewards);
+            // Ranked ladders are per-format: a 1v1 match updates the 1v1 rank,
+            // a 5v5 match updates the 5v5 rank.
+            if (msg.rankDelta !== undefined) applyRankDelta(msg.rankDelta, format);
+            recordMatch(msg.result);
+          } catch (e) {
+            console.error('[match_end] reward application failed:', e);
+          }
           setScreen('summary');
           break;
         }

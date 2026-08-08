@@ -200,6 +200,15 @@ drop policy if exists "profiles update own" on public.profiles;
 create policy "profiles update own" on public.profiles
   for update using (auth.uid() = id);
 
+-- The client saves its profile with `upsert ... onConflict(id)`, which
+-- PostgREST executes as INSERT ... ON CONFLICT DO UPDATE — that needs an
+-- INSERT policy too (INSERT + UPDATE), or every save fails RLS with
+-- "new row violates row-level security policy". New rows created here are
+-- always the user's own row (the signup trigger seeds it first).
+drop policy if exists "profiles insert own" on public.profiles;
+create policy "profiles insert own" on public.profiles
+  for insert with check (auth.uid() = id);
+
 -- friends: read/remove your own list. Inserts are trigger-only (accept).
 drop policy if exists "friends select own" on public.friends;
 create policy "friends select own" on public.friends

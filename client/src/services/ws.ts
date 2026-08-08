@@ -64,11 +64,20 @@ export function connectSocket(): void {
     flushPending();
   };
   ws.onmessage = (e) => {
+    let msg: ServerMessage | null = null;
     try {
-      const msg = JSON.parse(e.data as string) as ServerMessage;
-      for (const fn of messageListeners) fn(msg);
+      msg = JSON.parse(e.data as string) as ServerMessage;
     } catch {
-      /* ignore malformed */
+      return; // ignore malformed frames
+    }
+    // A listener crash (e.g. a stale server payload) must never silently kill
+    // the message flow — log it so real bugs surface, and continue dispatching.
+    for (const fn of messageListeners) {
+      try {
+        fn(msg);
+      } catch (err) {
+        console.error('[ws] message handler crashed:', err);
+      }
     }
   };
   ws.onclose = () => {
