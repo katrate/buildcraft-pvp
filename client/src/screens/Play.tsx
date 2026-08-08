@@ -137,13 +137,13 @@ export function Play(props: {
           </ModeIcon>
           <ModeTitle>Practice</ModeTitle>
           <ModeDesc>
-            Fight a single NPC to test builds, warm up, or earn coins and XP without queueing. Your real
-            build, normal rewards, no upgrades to buy.
+            Fight a single NPC to test builds and warm up — no queue, and no coins or XP. A pure
+            sandbox for experimenting with your build before you take it into PvP.
           </ModeDesc>
           <Button variant="primary" size="lg" onClick={props.onStartPractice}>
             <I n="swordCross" /> Fight NPC
           </Button>
-          <Tiny>Uses your active preset at full stats — a safe sandbox for new builds.</Tiny>
+          <Tiny>Uses your active preset at full stats — practice pays nothing.</Tiny>
         </ModeCard>
 
         {/* ============ UNRANKED ============ */}

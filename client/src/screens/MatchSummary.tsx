@@ -378,20 +378,30 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
         </HeroSub>
       </Hero>
 
-      <RewardsRow>
-        <RewardChip color="var(--accent-2)">
-          <I n="star" /> +{xpAni} XP
-        </RewardChip>
-        <RewardChip color="var(--warn)">
-          <I n="coins" /> +{coinAni} coins
-        </RewardChip>
-        {props.rankDelta !== undefined && (
-          <RewardChip color={props.rankDelta >= 0 ? 'var(--good)' : 'var(--bad)'}>
-            <I n="trophy" /> {props.rankDelta >= 0 ? '+' : '−'}
-            {rpAni} RP
-          </RewardChip>
-        )}
-      </RewardsRow>
+      {/* Practice and custom matches pay nothing — don't show "+0 XP" chips. */}
+      {(rewards.xp > 0 || rewards.coins > 0 || props.rankDelta !== undefined) && (
+        <RewardsRow>
+          {rewards.xp > 0 && (
+            <RewardChip color="var(--accent-2)">
+              <I n="star" /> +{xpAni} XP
+            </RewardChip>
+          )}
+          {rewards.coins > 0 && (
+            <RewardChip color="var(--warn)">
+              <I n="coins" /> +{coinAni} coins
+            </RewardChip>
+          )}
+          {props.rankDelta !== undefined && (
+            <RewardChip color={props.rankDelta >= 0 ? 'var(--good)' : 'var(--bad)'}>
+              <I n="trophy" /> {props.rankDelta >= 0 ? '+' : '−'}
+              {rpAni} RP
+            </RewardChip>
+          )}
+        </RewardsRow>
+      )}
+      {props.mode === 'practice' && (
+        <Breakdown>Practice match — no coins, no XP. Real rewards come from PvP.</Breakdown>
+      )}
       {rewards.breakdown && rewards.coins + rewards.xp > 0 && (
         <Breakdown>
           Coins: {rewards.breakdown.baseCoins} base + {rewards.breakdown.killCoins} kills + {rewards.breakdown.roundCoins} rounds = +{rewards.coins} ·{' '}
@@ -405,9 +415,9 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
             <span>Level {leveledUp ? `${props.levelFrom} → ${player.level}` : props.levelFrom}</span>
             {leveledUp ? (
               <Chip tone="warn"><I n="starFourPoints" /> Level up!</Chip>
-            ) : (
+            ) : rewards.xp > 0 ? (
               <Tiny>+{rewards.xp} XP</Tiny>
-            )}
+            ) : null}
           </BarLabel>
           <Track>
             <AnimatedFill from={xpFrom * 100} to={xpTo * 100} color="var(--accent-2)" />

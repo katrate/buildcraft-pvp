@@ -417,7 +417,7 @@ export function Build(props: { onBack: () => void }) {
             <EmptyState>
               <I n="lock" /> Ranked upgrades unlock at Level {RANKED_UNLOCK_LEVEL}.
               <br />
-              <Tiny>Practice against the NPC and win unranked matches to level up.</Tiny>
+              <Tiny>Win unranked or ranked matches to earn XP and level up.</Tiny>
             </EmptyState>
           )}
         </Panel>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { usePlayer, getState, grantRewards } from '../state/store';
+import { usePlayer } from '../state/store';
 import { CombatArena } from '../components/CombatArena';
 import { MatchSummary, type MatchSummaryData } from './MatchSummary';
 import { createPracticeMatch, playerCombatantInput } from '../../../shared/src/engine/practice';
@@ -58,7 +58,10 @@ export function CombatPractice(props: { onExit: () => void }) {
     return () => clearTimeout(timer);
   }, [state]);
 
-  // Apply rewards once when the match ends, then hand off to the stats screen.
+  // Hand off to the stats screen once when the match ends. Practice is a pure
+  // training sandbox: NO coins, NO XP, NO rank, NO record changes — nothing is
+  // granted (computeRewards('practice') returns zeros, and we never call
+  // grantRewards, so an NPC farm can never inflate the economy or progression).
   useEffect(() => {
     if (!state || state.phase !== 'MATCH_END' || appliedRef.current) return;
     appliedRef.current = true;
@@ -67,11 +70,6 @@ export function CombatPractice(props: { onExit: () => void }) {
       roundsSurvived: roundsSurvived(state),
       kills: myCombatant?.kills ?? 0,
     });
-    // Snapshot the pre-reward progress for the animated XP bar, then apply.
-    const before = getState();
-    // Practice is a solo sandbox — it pays coins/XP but does NOT touch the
-    // PvP win/loss record (an NPC farm must never inflate your profile).
-    grantRewards(rewards);
     setSummaryData({
       result: rewards.result,
       winnerTeam: state.winnerTeam ?? -1,
@@ -79,8 +77,8 @@ export function CombatPractice(props: { onExit: () => void }) {
       mode: 'practice',
       rewards,
       stats: collectCombatStats(state),
-      levelFrom: before.level,
-      xpFrom: before.xp,
+      levelFrom: player.level,
+      xpFrom: player.xp,
     });
   }, [state, myCombatantId]);
 

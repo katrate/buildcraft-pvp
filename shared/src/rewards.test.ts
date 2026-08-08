@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeRewards, validatePurchase, PERFORMANCE_BONUS, REWARD_TABLE } from './rewards';
+import { computeRewards, validatePurchase, PERFORMANCE_BONUS } from './rewards';
 
 function r(result: 'victory' | 'defeat' | 'draw', mode: 'practice' | 'unranked' | 'ranked' | 'custom', roundsSurvived: number, kills = 0) {
   return computeRewards(result, mode, { roundsSurvived, kills });
@@ -7,7 +7,7 @@ function r(result: 'victory' | 'defeat' | 'draw', mode: 'practice' | 'unranked' 
 
 describe('rewards: result base', () => {
   it('victory pays more than defeat in every progression mode', () => {
-    for (const mode of ['practice', 'unranked', 'ranked'] as const) {
+    for (const mode of ['unranked', 'ranked'] as const) {
       const win = r('victory', mode, 3, 0);
       const lose = r('defeat', mode, 3, 0);
       expect(win.xp).toBeGreaterThan(lose.xp);
@@ -26,10 +26,13 @@ describe('rewards: result base', () => {
     expect(lose.xp).toBeGreaterThan(0);
   });
 
-  it('practice pays exactly like unranked (solo sandbox, no grind advantage)', () => {
-    expect(r('victory', 'practice', 3, 0).coins).toBe(r('victory', 'unranked', 3, 0).coins);
-    expect(r('victory', 'practice', 3, 0).xp).toBe(r('victory', 'unranked', 3, 0).xp);
-    expect(r('defeat', 'practice', 0, 0).coins).toBe(REWARD_TABLE.practice.defeat.coins);
+  it('practice pays NO coins or XP — a training sandbox cannot farm progress', () => {
+    // Even a long, multi-kill stomp pays nothing: no economy hole via NPCs.
+    expect(r('victory', 'practice', 0, 0).coins).toBe(0);
+    expect(r('victory', 'practice', 0, 0).xp).toBe(0);
+    expect(r('defeat', 'practice', 0, 0).coins).toBe(0);
+    expect(r('draw', 'practice', 60, 99).coins).toBe(0);
+    expect(r('draw', 'practice', 60, 99).xp).toBe(0);
   });
 
   it('custom awards NO coins or XP — friend lobbies cannot be farmed', () => {

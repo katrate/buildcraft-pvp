@@ -14,12 +14,13 @@ import type { MatchMode, MatchRewards, PlayerResult, RewardBreakdown } from './t
 // ------------------------------------------------------------
 
 export const REWARD_TABLE: Record<MatchMode, Record<PlayerResult, { xp: number; coins: number }>> = {
-  // Practice = the solo sandbox — pays exactly like unranked so solo players
-  // can still progress without queueing.
+  // Practice = the pure training sandbox — NO coins or XP. It exists to test
+  // builds and warm up; earning comes from unranked/ranked only, so an NPC
+  // farm can never inflate the economy or fake progression.
   practice: {
-    victory: { xp: 100, coins: 50 },
-    defeat: { xp: 30, coins: 20 },
-    draw: { xp: 50, coins: 30 },
+    victory: { xp: 0, coins: 0 },
+    defeat: { xp: 0, coins: 0 },
+    draw: { xp: 0, coins: 0 },
   },
   unranked: {
     victory: { xp: 100, coins: 50 },
@@ -34,7 +35,7 @@ export const REWARD_TABLE: Record<MatchMode, Record<PlayerResult, { xp: number; 
   // Custom friend lobbies award NO coins/XP. They are fun-only (any team
   // split, leader-chosen normalization) — if they paid, friends could farm
   // 2v5 stomps for currency, which is exactly the economy inflation we
-  // want to avoid. Practice is the mode that pays for solo play.
+  // want to avoid. Practice is free too — play it to test builds.
   custom: {
     victory: { xp: 0, coins: 0 },
     defeat: { xp: 0, coins: 0 },
@@ -63,9 +64,10 @@ export interface RewardPerformance {
 
 export function computeRewards(result: PlayerResult, mode: MatchMode, perf: RewardPerformance): MatchRewards {
   const base = REWARD_TABLE[mode][result];
-  // Custom friend lobbies pay nothing at all — not even performance bonuses,
-  // or a 2v5 stomp with many kills would still mint currency.
-  const earning = mode !== 'custom';
+  // Only real PvP modes earn. Practice and custom friend lobbies pay nothing
+  // at all — not even performance bonuses, or a long stomp (NPC or 2v5) with
+  // many kills would still mint currency.
+  const earning = mode === 'unranked' || mode === 'ranked';
   const killBonuses = earning ? Math.min(perf.kills, PERFORMANCE_BONUS.maxKillBonuses) : 0;
   const roundTicks = earning ? Math.floor(perf.roundsSurvived / PERFORMANCE_BONUS.roundsPerTick) : 0;
 
