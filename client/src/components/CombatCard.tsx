@@ -1,6 +1,5 @@
 import type { Combatant } from '../../../shared/src/types';
 import { EFFECT_META } from '../../../shared/src/game-data/effects';
-import { maxUsesFor } from '../../../shared/src/engine/combat';
 import { ULTIMATE_CHARGE_MAX } from '../../../shared/src/constants';
 import { StatBar } from './StatBar';
 import { I, type IconName } from '../ui/icons';
@@ -32,8 +31,6 @@ export function CombatCard(props: {
   // Face-off arena: allies are cyan (near side), enemies red (far side).
   const teamColor = isAlly ? '#2dd4ff' : '#ff4655';
 
-  const totalUsesLeft = Object.values(c.usesLeft).reduce((a, b) => a + b, 0);
-  const totalUsesMax = (c.build?.actives ?? []).reduce((a, p) => a + maxUsesFor(p, c.build!), 0);
 
   return (
     <CombatantCard
@@ -59,11 +56,6 @@ export function CombatCard(props: {
             {e.amount ? Math.round(e.amount) : ''}
           </FxBadge>
         ))}
-        {totalUsesMax > 0 && !dead && (
-          <FxBadge title="Ability uses remaining this match">
-            <I n="refresh" /> {totalUsesLeft}/{totalUsesMax}
-          </FxBadge>
-        )}
         {c.ultimate && (
           <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX} title="Ultimate charge">
             <I n="starFourPoints" /> {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
