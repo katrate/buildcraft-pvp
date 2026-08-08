@@ -12,7 +12,6 @@ import {
   Arena,
   ArenaTop,
   Battlefield,
-  Button,
   Chip,
   FloatPopup,
   PotionBar,
@@ -325,16 +324,6 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
                 </AbilityButton>
               );
             })}
-            <Button
-              variant="ghost"
-              disabled={!myTurn || !!disabled}
-              onClick={() => {
-                setPending(null);
-                onAction({ type: 'END_TURN' });
-              }}
-            >
-              End Turn <I n="play" />
-            </Button>
           </>
         )}
       </AbilityBar>
