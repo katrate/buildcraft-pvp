@@ -82,5 +82,5 @@ function usePower(power: PowerDefinition, targetId: string): PlayerAction {
 }
 
 function powerValue(p: PowerDefinition): number {
-  return (p.healAmount ?? 0) + (p.baseDamage ?? 0) * 10 + (p.flatDamage ?? 0) + (p.aiPriority ?? 0);
+  return (p.healAmount ?? 0) + (p.attack ?? 0) + (p.aiPriority ?? 0);
 }

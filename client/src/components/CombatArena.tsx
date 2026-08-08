@@ -69,7 +69,7 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
   // Rough damage preview for a power, computed against the weakest living enemy.
   function estimateDmg(power: PowerDefinition): number | null {
     if (!myCombatant) return null;
-    if (!power.baseDamage && !power.flatDamage) return null;
+    if (!power.attack) return null;
     const enemies = Object.values(state.combatants).filter((c) => c.alive && c.teamId !== myCombatant.teamId);
     if (enemies.length === 0) return null;
     const weakest = enemies.reduce((a, b) => (effectiveDefense(a) <= effectiveDefense(b) ? a : b));

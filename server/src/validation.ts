@@ -24,6 +24,11 @@ export function validatePreset(preset: Preset): ValidationResult {
 
     if (slotDef.accepts === 'gear') {
       if (!gear) return { valid: false, error: `Unknown gear "${itemId}" in ${slotDef.label}.` };
+      // Gear is slot-specific: a sword cannot be equipped in the armor or
+      // utility slot.
+      if (gear.slot !== slotDef.id) {
+        return { valid: false, error: `"${gear.name}" is ${gear.slot} gear and cannot go in ${slotDef.label}.` };
+      }
     } else {
       if (!power) return { valid: false, error: `Unknown power "${itemId}" in ${slotDef.label}.` };
       // Slot groups: core/actives/passives/ultimate

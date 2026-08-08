@@ -37,6 +37,9 @@ export function computeStats(preset: Preset): CombatBuild {
     if (!itemId) continue;
     const gear = getGear(itemId);
     if (gear) {
+      // Gear must live in its own slot type (weapon/armor/utility) — a sword
+      // in the armor slot is invalid and is NOT applied in combat.
+      if (gear.slot !== slot) continue;
       applyStats(gear.stats);
       bonusAbilityUses += gear.bonusAbilityUses ?? 0;
       // Clone effect specs — never share references with the global data definitions
@@ -86,7 +89,7 @@ export function computePvpBuild(preset: Preset, mode: MatchMode, extras?: PvpExt
   if (mode === 'ranked') {
     const build = computeStats(preset);
     const ru = extras?.rankedUpgrades ?? {};
-    build.stats.maxHp += Math.round((ru.maxHp ?? 0) * (RANKED_UPGRADE.gains.maxHp ?? 0));
+    // HP has NO ranked modifier — it only comes from the build (200 base + gear/powers).
     build.stats.attack += (ru.attack ?? 0) * (RANKED_UPGRADE.gains.attack ?? 0);
     build.stats.defense += (ru.defense ?? 0) * (RANKED_UPGRADE.gains.defense ?? 0);
     build.stats.initiative += extras?.initiativeUpgrade ?? 0;
@@ -98,7 +101,6 @@ export function computePvpBuild(preset: Preset, mode: MatchMode, extras?: PvpExt
   if (mode === 'custom' && extras?.customNorm && extras.customNorm !== 'standard') {
     const tier = CUSTOM_NORM_TIERS[extras.customNorm];
     const levels = maxRankedUpgradeFor(tier);
-    build.stats.maxHp += Math.round(levels * (RANKED_UPGRADE.gains.maxHp ?? 0));
     build.stats.attack += levels * (RANKED_UPGRADE.gains.attack ?? 0);
     build.stats.defense += levels * (RANKED_UPGRADE.gains.defense ?? 0);
   } else if (mode !== 'custom') {
@@ -126,5 +128,5 @@ export function rankedUpgradeCeiling(tier: number): number {
 }
 
 export function totalRankedLevels(upgrades: Partial<RankedUpgrades>): number {
-  return (upgrades.maxHp ?? 0) + (upgrades.attack ?? 0) + (upgrades.defense ?? 0);
+  return (upgrades.attack ?? 0) + (upgrades.defense ?? 0);
 }

@@ -30,28 +30,36 @@ function mkMatch(extraActiveA: string | null = null): MatchState {
 }
 
 describe('damage calculation', () => {
-  it('computes damage from attack minus half defense', () => {
+  it('damage = power attack + caster attack - defender defense', () => {
     const s = mkMatch();
     const atk = s.combatants.p1;
     const def = s.combatants.p2;
-    // attack = 10 base + 3 iron sword = 13; defense 5 -> mitigation 2.5
-    const dmg = computeDamage(atk, def, { baseDamage: 1.3, flatDamage: 2 });
-    expect(dmg).toBe(Math.round(13 * 1.3 + 2 - 5 * 0.5));
+    // caster attack = 20 base + 3 iron sword = 23; defender defense = 5
+    const dmg = computeDamage(atk, def, { attack: 30 });
+    expect(dmg).toBe(30 + 23 - 5);
   });
 
   it('defense reduces incoming damage', () => {
     const s = mkMatch();
     const glass = s.combatants.p2; // defense 5
     const tank = { ...s.combatants.p2, defense: 12 };
-    const dmgGlass = computeDamage(s.combatants.p1, glass, { baseDamage: 1 });
-    const dmgTank = computeDamage(s.combatants.p1, tank, { baseDamage: 1 });
+    const dmgGlass = computeDamage(s.combatants.p1, glass, { attack: 30 });
+    const dmgTank = computeDamage(s.combatants.p1, tank, { attack: 30 });
     expect(dmgTank).toBeLessThan(dmgGlass);
+    expect(dmgTank).toBe(30 + 23 - 12);
   });
 
   it('never deals less than 1 damage', () => {
     const s = mkMatch();
     const def = { ...s.combatants.p2, defense: 9999 };
-    expect(computeDamage(s.combatants.p1, def, { baseDamage: 0.1 })).toBe(1);
+    expect(computeDamage(s.combatants.p1, def, { attack: 30 })).toBe(1);
+  });
+
+  it('a basic attack is caster attack minus defense', () => {
+    const s = mkMatch();
+    const atk = s.combatants.p1; // attack 23
+    const def = s.combatants.p2; // defense 5
+    expect(computeDamage(atk, def, {})).toBe(23 - 5);
   });
 });
 
@@ -88,7 +96,7 @@ describe('actions', () => {
     const before = s.combatants.p2.hp;
     applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' });
     expect(s.combatants.p1.usesLeft.fire_bolt).toBe(2);
-    expect(s.combatants.p2.hp).toBe(before - computeDamage(s.combatants.p1, s.combatants.p2, { baseDamage: 1.3, flatDamage: 2 }));
+    expect(s.combatants.p2.hp).toBe(before - computeDamage(s.combatants.p1, s.combatants.p2, { attack: 30 }));
     expect(s.combatants.p2.alive).toBe(true);
   });
 
@@ -97,7 +105,7 @@ describe('actions', () => {
     s.combatants.p1.usesLeft = { fire_bolt: 0 };
     applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' });
     expect(s.combatants.p1.usesLeft.fire_bolt).toBe(0); // nothing consumed
-    expect(s.combatants.p2.hp).toBe(100);
+    expect(s.combatants.p2.hp).toBe(200);
   });
 
   it('basic attack damages target', () => {
@@ -118,7 +126,7 @@ describe('actions', () => {
     const s = mkMatch();
     const before = s.combatants.p2.hp;
     applyAction(s, { type: 'BASIC_ATTACK', targetId: 'p2', damage: 999999 } as never);
-    expect(s.combatants.p2.hp).toBe(before - computeDamage(s.combatants.p1, s.combatants.p2, { baseDamage: 1 }));
+    expect(s.combatants.p2.hp).toBe(before - computeDamage(s.combatants.p1, s.combatants.p2, {}));
     expect(s.combatants.p2.hp).toBeGreaterThan(0);
   });
 
@@ -130,33 +138,45 @@ describe('actions', () => {
 
   it('shield absorbs damage before HP', () => {
     const s = mkMatch();
+    // fire bolt deals 48 (30 + 23 attack - 5 defense); a 60 shield absorbs it all
     s.combatants.p2.effects.push({
-      uid: 's1', kind: 'shield', amount: 30, duration: 0, sourceId: 'p1', displayName: 'Shield', icon: '🛡',
+      uid: 's1', kind: 'shield', amount: 60, duration: 0, sourceId: 'p1', displayName: 'Shield', icon: '🛡',
     });
     const before = s.combatants.p2.hp;
     applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' });
     expect(s.combatants.p2.hp).toBe(before);
   });
 
+  it('shield partially absorbs when it is smaller than the hit', () => {
+    const s = mkMatch();
+    s.combatants.p2.effects.push({
+      uid: 's1', kind: 'shield', amount: 20, duration: 0, sourceId: 'p1', displayName: 'Shield', icon: '🛡',
+    });
+    const before = s.combatants.p2.hp;
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'p2' });
+    // 48 damage: 20 absorbed, 28 leaks through to HP
+    expect(s.combatants.p2.hp).toBe(before - (48 - 20));
+  });
+
   it('counter retaliates against the attacker', () => {
     const s = mkMatch();
     s.combatants.p2.effects.push({
-      uid: 'c1', kind: 'counter', amount: 8, duration: 0, sourceId: 'p1', displayName: 'Counter', icon: '↩',
+      uid: 'c1', kind: 'counter', amount: 12, duration: 0, sourceId: 'p1', displayName: 'Counter', icon: '↩',
     });
     const atkBefore = s.combatants.p1.hp;
     applyAction(s, { type: 'BASIC_ATTACK', targetId: 'p2' });
-    expect(s.combatants.p1.hp).toBe(atkBefore - 8);
+    expect(s.combatants.p1.hp).toBe(atkBefore - 12);
   });
 
   it('poison deals damage over time at the start of the victim turn', () => {
     const s = mkMatch('poison');
     applyAction(s, { type: 'USE_ABILITY', powerId: 'poison', targetId: 'p2' });
     // The DoT ticked on p2's turn start (applyAction advances through it)
-    const castDmg = computeDamage(s.combatants.p1, s.combatants.p2, { flatDamage: 2 });
-    expect(s.combatants.p2.hp).toBe(100 - castDmg - 6);
+    const castDmg = computeDamage(s.combatants.p1, s.combatants.p2, { attack: 15 });
+    expect(s.combatants.p2.hp).toBe(200 - castDmg - 8);
     expect(s.combatants.p2.effects.some((e) => e.kind === 'poison')).toBe(true);
     const log = s.log.map((l) => l.text).join('\n');
-    expect(log).toContain('takes 6 damage over time');
+    expect(log).toContain('takes 8 damage over time');
   });
 
   it('stun skips the victim turn', () => {
@@ -190,7 +210,7 @@ describe('actions', () => {
     const s = mkMatch('heal');
     s.combatants.p1.hp = 40;
     applyAction(s, { type: 'USE_ABILITY', powerId: 'heal', targetId: 'p1' });
-    expect(s.combatants.p1.hp).toBe(70);
+    expect(s.combatants.p1.hp).toBe(80);
   });
 
   it('abilities are limited to their per-match uses', () => {
@@ -235,12 +255,12 @@ describe('actions', () => {
     s.combatants.p1.build = {
       ...s.combatants.p1.build!,
       actives: [],
-      ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', baseDamage: 2.5, targetRule: 'all-enemies' },
+      ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', attack: 70, targetRule: 'all-enemies' },
     };
     s.combatants.p1.ultimate = { id: 'inferno', charge: ULTIMATE_CHARGE_MAX };
     const before = s.combatants.p2.hp;
     applyAction(s, { type: 'USE_ABILITY', powerId: 'inferno' });
-    const expected = computeDamage(s.combatants.p1, s.combatants.p2, { baseDamage: 2.5 });
+    const expected = computeDamage(s.combatants.p1, s.combatants.p2, { attack: 70 });
     expect(s.combatants.p2.hp).toBe(before - expected);
     expect(s.combatants.p2.alive).toBe(true); // target survives -> no kill credit
     expect(s.combatants.p1.ultimate?.charge).toBe(0); // reset after firing
@@ -251,12 +271,12 @@ describe('actions', () => {
     s.combatants.p1.build = {
       ...s.combatants.p1.build!,
       actives: [],
-      ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', baseDamage: 2.5, targetRule: 'all-enemies' },
+      ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', attack: 70, targetRule: 'all-enemies' },
     };
     s.combatants.p1.ultimate = { id: 'inferno', charge: 4 };
     applyAction(s, { type: 'USE_ABILITY', powerId: 'inferno' });
     expect(s.combatants.p1.ultimate?.charge).toBe(4); // unchanged
-    expect(s.combatants.p2.hp).toBe(100);
+    expect(s.combatants.p2.hp).toBe(200);
     expect(isMyTurn(s, 'p1')).toBe(true); // fizzled — turn not consumed
   });
 });
@@ -264,7 +284,7 @@ describe('actions', () => {
 describe('ultimate charge', () => {
   it('gains +1 charge at the start of each round', () => {
     const s = mkMatch('fire_bolt');
-    s.combatants.p1.build = { ...s.combatants.p1.build!, actives: [], ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', baseDamage: 2.5, targetRule: 'all-enemies' } };
+    s.combatants.p1.build = { ...s.combatants.p1.build!, actives: [], ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', attack: 70, targetRule: 'all-enemies' } };
     s.combatants.p1.ultimate = { id: 'inferno', charge: 0 };
     expect(s.combatants.p1.ultimate?.charge).toBe(0);
     // each completed round grants +1 at the next round start
@@ -280,7 +300,7 @@ describe('ultimate charge', () => {
 
   it('gains +1 charge per kill', () => {
     const s = mkMatch();
-    s.combatants.p1.build = { ...s.combatants.p1.build!, actives: [], ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', baseDamage: 2.5, targetRule: 'all-enemies' } };
+    s.combatants.p1.build = { ...s.combatants.p1.build!, actives: [], ultimate: { id: 'inferno', name: 'Inferno', description: 'x', kind: 'power', powerKind: 'ultimate', slot: 'ultimate', price: 400, rarity: 'epic', attack: 70, targetRule: 'all-enemies' } };
     s.combatants.p1.ultimate = { id: 'inferno', charge: 0 };
     s.combatants.p2.hp = 5;
     applyAction(s, { type: 'BASIC_ATTACK', targetId: 'p2' }); // lethal

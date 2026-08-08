@@ -55,9 +55,9 @@ import {
 } from '../ui/glass';
 
 const DISPLAY_MAX: Record<string, number> = {
-  maxHp: 300,
-  attack: 35,
-  defense: 20,
+  maxHp: 320,
+  attack: 45,
+  defense: 25,
   initiative: 30,
 };
 
@@ -84,15 +84,15 @@ export function Build(props: { onBack: () => void }) {
   // Unranked = normalized base + (non-normalized) initiative upgrade.
   const unrankedStats = { ...normalized, initiative: normalized.initiative + player.initiativeUpgrade };
   // Ranked = full build + ranked upgrades + initiative upgrade.
+  // HP has no ranked modifier — it stays at 200 base + build bonuses.
   const rankedStats = {
-    maxHp: build.stats.maxHp + Math.round((player.rankedUpgrades.maxHp ?? 0) * (RANKED_UPGRADE.gains.maxHp ?? 0)),
+    maxHp: build.stats.maxHp,
     attack: build.stats.attack + (player.rankedUpgrades.attack ?? 0) * (RANKED_UPGRADE.gains.attack ?? 0),
     defense: build.stats.defense + (player.rankedUpgrades.defense ?? 0) * (RANKED_UPGRADE.gains.defense ?? 0),
     initiative: build.stats.initiative + player.initiativeUpgrade,
   };
 
   const rankedRows: { stat: keyof RankedUpgrades; label: string; icon: string }[] = [
-    { stat: 'maxHp', label: RANKED_UPGRADE.labels.maxHp, icon: '❤️' },
     { stat: 'attack', label: RANKED_UPGRADE.labels.attack, icon: '⚔' },
     { stat: 'defense', label: RANKED_UPGRADE.labels.defense, icon: '🛡' },
   ];
@@ -202,7 +202,19 @@ export function Build(props: { onBack: () => void }) {
                         <SlotEmpty>Empty — {slot.description}</SlotEmpty>
                       )}
                     </Grow>
-                    <Tiny>{item ? item.rarity : '—'}</Tiny>
+                    <Tiny
+                      style={
+                        item && item.kind === 'gear' && item.slot !== slot.id
+                          ? { color: 'var(--warn)' }
+                          : undefined
+                      }
+                    >
+                      {item && item.kind === 'gear' && item.slot !== slot.id
+                        ? '⚠ wrong slot'
+                        : item
+                          ? item.rarity
+                          : '—'}
+                    </Tiny>
                   </SlotCard>
                 </div>
               );
@@ -214,24 +226,45 @@ export function Build(props: { onBack: () => void }) {
           </Tiny>
         </Panel>
 
-        {/* Stats */}
+        {/* Stats — ranked calculation on top, unranked recalculation below */}
         <Panel>
-          <PanelTitle>Resulting stats</PanelTitle>
+          <PanelTitle>Combat Stats (Ranked)</PanelTitle>
           <StatBlock>
-            {STAT_IDS.map((s) => (
-              <StatBar
-                key={s}
-                label={STAT_LABELS[s]}
-                value={build.stats[s]}
-                max={DISPLAY_MAX[s]}
-                color={STAT_COLORS[s]}
-              />
-            ))}
+            <StatBar
+              label="HP · 200 base + build"
+              value={rankedStats.maxHp}
+              max={DISPLAY_MAX.maxHp}
+              color={STAT_COLORS.maxHp}
+            />
+            <StatBar
+              label="Attack · added to every hit"
+              value={rankedStats.attack}
+              max={DISPLAY_MAX.attack}
+              color={STAT_COLORS.attack}
+            />
+            <StatBar
+              label="Defense · armour + modifier"
+              value={rankedStats.defense}
+              max={DISPLAY_MAX.defense}
+              color={STAT_COLORS.defense}
+            />
+            <StatBar
+              label="Initiative"
+              value={rankedStats.initiative}
+              max={DISPLAY_MAX.initiative}
+              color={STAT_COLORS.initiative}
+            />
           </StatBlock>
+          <P style={{ margin: '10px 0 0' }}>
+            Damage dealt = <b>power attack + your Attack − enemy Defense</b>. HP has no ranked modifier —
+            it starts at 200 and only rises from gear &amp; powers. Your ranked upgrades are already included
+            here ({rank.name} ceiling: {ceiling} per stat
+            {rankedUnlocked ? '' : ' — ranked locked until level 20'}).
+          </P>
           <Divider />
-          <PanelTitle>Unranked (normalized)</PanelTitle>
+          <PanelTitle>Unranked (recalculated)</PanelTitle>
           <P style={{ margin: 0 }}>
-            Re-based toward the reference level — except your coin-bought Initiative, which is never
+            Your stats re-calculated by the unranked modifier — except coin-bought Initiative, which is never
             normalized.
           </P>
           <Row wrap gap={6} style={{ marginTop: 8 }}>
@@ -242,30 +275,10 @@ export function Build(props: { onBack: () => void }) {
             ))}
           </Row>
           <Divider />
-          <PanelTitle>Ranked (full stats)</PanelTitle>
-          {rankedUnlocked ? (
-            <>
-              <P style={{ margin: 0 }}>
-                Your real build + ranked upgrades ({rank.name} ceiling: {ceiling} levels per stat).
-              </P>
-              <Row wrap gap={6} style={{ marginTop: 8 }}>
-                {STAT_IDS.map((s) => (
-                  <Chip key={s}>
-                    {STAT_LABELS[s]} {Math.round(rankedStats[s as keyof typeof rankedStats])}
-                  </Chip>
-                ))}
-              </Row>
-            </>
-          ) : (
-            <P style={{ margin: 0 }}>
-              🔒 Reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play and ranked stat upgrades.
-            </P>
-          )}
-          <Divider />
           <Row wrap>
             {build.actives.map((p) => (
               <Chip key={p.id}>
-                {p.name} ({p.uses ?? 0} use{p.uses === 1 ? '' : 's'})
+                {p.name} ({p.attack ?? 0} dmg · {p.uses ?? 0} use{p.uses === 1 ? '' : 's'})
               </Chip>
             ))}
             {build.ultimate && <Chip tone="warn">ULT: {build.ultimate.name} ✦/5</Chip>}
@@ -338,7 +351,7 @@ export function Build(props: { onBack: () => void }) {
                       <Tiny>
                         +{Math.round(lvl * (gain ?? 0) * 10) / 10} →{' '}
                         +{Math.round((lvl + 1) * (gain ?? 0) * 10) / 10}{' '}
-                        {row.stat === 'maxHp' ? 'HP' : row.stat}
+                        {row.stat === 'attack' ? 'Power' : 'Armor'}
                       </Tiny>
                     </div>
                     <Button

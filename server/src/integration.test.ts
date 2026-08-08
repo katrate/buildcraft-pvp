@@ -114,7 +114,7 @@ class TestClient {
     return u ? u.party.partyId : null;
   }
 
-  join(teamSize: 1 | 2 | 5, preset: Preset, opts?: { mode?: PvpMode; initiativeUpgrade?: number; rankedUpgrades?: { maxHp: number; attack: number; defense: number }; rating?: number; partyId?: string }): void {
+  join(teamSize: 1 | 2 | 5, preset: Preset, opts?: { mode?: PvpMode; initiativeUpgrade?: number; rankedUpgrades?: { attack: number; defense: number }; rating?: number; partyId?: string }): void {
     this.send({
       type: 'join_queue',
       playerId: this.playerId,
@@ -821,7 +821,9 @@ describe('multiplayer integration', () => {
     const meM2 = Object.values(leader.match!.combatants).find((c) => c.playerId === 'cu_m2')!;
     expect(meL.maxHp).toBe(meM2.maxHp);
     expect(meL.initiative).toBe(meM2.initiative);
-    expect(meL.maxHp).toBeGreaterThan(200); // gold budget (+144 over normalized base)
+    // Gold budget: attack is raised over the normalized base (HP has no budget).
+    expect(meL.attack).toBe(meM2.attack);
+    expect(meL.attack).toBeGreaterThan(20); // gold adds +18 attack over normalized base
     leader.close();
     m1.close();
     m2.close();

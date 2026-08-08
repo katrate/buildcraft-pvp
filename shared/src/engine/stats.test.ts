@@ -9,7 +9,7 @@ function preset(slots: Record<string, string | null>): Preset {
 describe('computeStats', () => {
   it('applies base stats with no items', () => {
     const s = computeStats(preset({}));
-    expect(s.stats).toEqual({ maxHp: 100, attack: 10, defense: 5, initiative: 10 });
+    expect(s.stats).toEqual({ maxHp: 200, attack: 20, defense: 5, initiative: 10 });
   });
 
   it('sums gear and power stat bonuses', () => {
@@ -19,8 +19,8 @@ describe('computeStats', () => {
       armor: 'heavy_armor', // +4 def, +20 hp, -2 ini
       passive1: 'swift', // +2 ini
     }));
-    expect(s.stats.maxHp).toBe(120);
-    expect(s.stats.attack).toBe(18);
+    expect(s.stats.maxHp).toBe(220);
+    expect(s.stats.attack).toBe(28);
     expect(s.stats.defense).toBe(9);
     expect(s.stats.initiative).toBe(8);
   });
@@ -51,6 +51,11 @@ describe('computeStats', () => {
 
   it('ignores unknown item ids', () => {
     const s = computeStats(preset({ weapon: 'does_not_exist' }));
-    expect(s.stats.attack).toBe(10);
+    expect(s.stats.attack).toBe(20);
+  });
+
+  it('ignores gear equipped in the wrong slot (sword in armor slot)', () => {
+    const s = computeStats(preset({ armor: 'iron_sword' })); // sword belongs in weapon slot
+    expect(s.stats.attack).toBe(20); // +3 attack NOT applied
   });
 });

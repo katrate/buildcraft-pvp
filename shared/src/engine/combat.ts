@@ -128,9 +128,12 @@ function log(state: MatchState, text: string): void {
 // Damage
 // ------------------------------------------------------------
 
-export function computeDamage(attacker: Combatant, defender: Combatant, power: { baseDamage?: number; flatDamage?: number }): number {
-  const atk = effectiveAttack(attacker) * (power.baseDamage ?? 1) + (power.flatDamage ?? 0);
-  const mitigation = effectiveDefense(defender) * 0.5;
+// Damage = the power's own attack + the caster's Attack stat, minus the
+// defender's full Defense (armor base + any defense modifier). A basic
+// attack has no power attack, so it is just caster Attack - target Defense.
+export function computeDamage(attacker: Combatant, defender: Combatant, power: { attack?: number }): number {
+  const atk = (power.attack ?? 0) + effectiveAttack(attacker);
+  const mitigation = effectiveDefense(defender);
   return Math.max(1, Math.round(atk - mitigation));
 }
 
@@ -380,7 +383,7 @@ export function applyAction(state: MatchState, action: PlayerAction): MatchState
     const targets = resolveTargets(state, actor, 'enemy', action.targetId);
     if (targets.length > 0) {
       const t = targets[0];
-      const dmg = computeDamage(actor, t, { baseDamage: 1 });
+      const dmg = computeDamage(actor, t, {});
       log(state, `${actor.name} performs a basic attack on ${t.name}.`);
       dealDamageTo(state, t, actor, dmg, 'basic attack');
     } else {
@@ -423,7 +426,7 @@ function useAbility(state: MatchState, actor: Combatant, powerId: string, target
   log(state, `${actor.name} uses ${power.name}!`);
   let dmgDealt = 0;
   for (const t of targets) {
-    if ((power.baseDamage ?? 0) > 0 || (power.flatDamage ?? 0) > 0) {
+    if ((power.attack ?? 0) > 0) {
       const dmg = computeDamage(actor, t, power);
       dmgDealt += dmg;
       dealDamageTo(state, t, actor, dmg, power.name);

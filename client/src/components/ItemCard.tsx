@@ -48,9 +48,10 @@ export function itemStatsLine(item: PowerDefinition | GearDefinition): string {
     }
     for (const e of item.effects ?? []) parts.push(`${EFFECT_META[e.kind].label} ${e.amount}`);
   } else {
-    if (item.baseDamage) parts.push(`${item.baseDamage}x dmg`);
-    if (item.flatDamage) parts.push(`+${item.flatDamage}`);
+    if (item.attack) parts.push(`${item.attack} dmg + your Attack`);
     if (item.healAmount) parts.push(`+${item.healAmount} HP`);
+    const dot = (item.effects ?? []).find((e) => e.kind === 'poison' || e.kind === 'burn');
+    if (dot) parts.push(`${dot.amount} DoT × ${dot.duration}`);
     if (item.powerKind === 'ultimate') parts.push('charges per round / kill');
     else if (item.uses !== undefined) parts.push(`${item.uses} use${item.uses === 1 ? '' : 's'} per match`);
   }

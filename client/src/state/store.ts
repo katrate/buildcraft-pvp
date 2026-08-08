@@ -43,7 +43,7 @@ export function defaultState(): PlayerState {
     activePresetId: 'preset_starter',
     record: { wins: 0, losses: 0, matches: 0 },
     initiativeUpgrade: 0,
-    rankedUpgrades: { maxHp: 0, attack: 0, defense: 0 },
+    rankedUpgrades: { attack: 0, defense: 0 },
     rank: { rating: START_RATING, games: 0 },
     friends: [],
   };
@@ -62,6 +62,23 @@ function load(): PlayerState {
       merged.rank = { rating: START_RATING + (oldRank.tier ?? 0) * 200, games: 0 };
     }
     if (typeof merged.rank.rating !== 'number') merged.rank = { rating: START_RATING, games: 0 };
+    // HP ranked upgrades were removed — strip the legacy field from old saves.
+    merged.rankedUpgrades = {
+      attack: merged.rankedUpgrades?.attack ?? 0,
+      defense: merged.rankedUpgrades?.defense ?? 0,
+    };
+    // The old UI allowed gear in the wrong slot (a sword in the armor slot).
+    // The server rejects such presets, so auto-drop mismatched gear on load.
+    merged.presets = merged.presets.map((p) => {
+      const slots: Record<string, string | null> = {};
+      for (const [slot, itemId] of Object.entries(p.slots)) {
+        if (!itemId) continue;
+        const g = GEAR[itemId];
+        if (g && g.slot !== slot) continue; // drop gear that doesn't fit its slot
+        slots[slot] = itemId;
+      }
+      return { ...p, slots };
+    });
     return merged;
   } catch {
     return defaultState();

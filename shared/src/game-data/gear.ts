@@ -70,10 +70,10 @@ define({
   stats: { maxHp: 25 },
 });
 define({
-  id: 'reactive_shield', name: 'Reactive Shield', description: 'Start each fight with a 15-damage shield.',
+  id: 'reactive_shield', name: 'Reactive Shield', description: 'Start each fight with a 30-damage shield.',
   kind: 'gear', slot: 'utility', price: 2000, rarity: 'rare',
   stats: {},
-  effects: [{ kind: 'shield', amount: 15, duration: 0 }],
+  effects: [{ kind: 'shield', amount: 30, duration: 0 }],
 });
 
 export function getGear(id: string | null | undefined): GearDefinition | null {

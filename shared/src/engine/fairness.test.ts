@@ -84,31 +84,31 @@ describe('fairness: PvP modes use the right stat pools', () => {
     expect(upgraded.stats.maxHp).toBe(base.stats.maxHp);
   });
 
-  it('ranked upgrades apply only in ranked matches', () => {
-    const ranked = computePvpBuild(P, 'ranked', { rankedUpgrades: { maxHp: 4, attack: 3, defense: 2 } });
-    const unranked = computePvpBuild(P, 'unranked', { rankedUpgrades: { maxHp: 4, attack: 3, defense: 2 } });
+  it('ranked upgrades apply only in ranked matches (attack + defense, no HP)', () => {
+    const ranked = computePvpBuild(P, 'ranked', { rankedUpgrades: { attack: 3, defense: 2 } });
+    const unranked = computePvpBuild(P, 'unranked', { rankedUpgrades: { attack: 3, defense: 2 } });
     const raw = computeStats(P);
-    // ranked = raw + upgrades (12 HP / 1.5 atk / 1 def per level)
-    expect(ranked.stats.maxHp).toBe(raw.stats.maxHp + 48);
+    // ranked = raw + upgrades (1.5 atk / 1 def per level); HP has NO modifier.
+    expect(ranked.stats.maxHp).toBe(raw.stats.maxHp);
     expect(ranked.stats.attack).toBe(raw.stats.attack + 4.5);
     expect(ranked.stats.defense).toBe(raw.stats.defense + 2);
     // unranked is normalized to the reference level — the ranked upgrades are invisible there
     expect(unranked.stats.maxHp).toBe(normalizeUnranked(raw.stats).maxHp);
   });
 
-  it('custom matches equalize everyone to the chosen rank budget', () => {
+  it('custom matches equalize everyone to the chosen rank budget (attack/defense)', () => {
     const bronze = computePvpBuild(P, 'custom', { customNorm: 'bronze' });
     const diamond = computePvpBuild(P, 'custom', { customNorm: 'diamond' });
     const standard = computePvpBuild(P, 'custom', { customNorm: 'standard' });
     const gold = computePvpBuild(P, 'custom', { customNorm: 'gold' });
     // Diamond (tier 4, ceiling 20) > Gold (tier 2, ceiling 12) > Bronze
-    // (tier 0, ceiling 5) > standard (no budget at all).
-    expect(diamond.stats.maxHp).toBeGreaterThan(gold.stats.maxHp);
-    expect(gold.stats.maxHp).toBeGreaterThan(bronze.stats.maxHp);
-    expect(bronze.stats.maxHp).toBeGreaterThan(standard.stats.maxHp);
-    // The budget is exactly the rank's upgrade ceiling on top of the
-    // normalized base: gold = +12 levels (12 HP / 1.5 atk / 1 def each).
-    expect(gold.stats.maxHp).toBe(standard.stats.maxHp + 144);
+    // (tier 0, ceiling 5) > standard (no budget at all). Attack scales with
+    // the budget; HP never does.
+    expect(diamond.stats.attack).toBeGreaterThan(gold.stats.attack);
+    expect(gold.stats.attack).toBeGreaterThan(bronze.stats.attack);
+    expect(bronze.stats.attack).toBeGreaterThan(standard.stats.attack);
+    expect(gold.stats.maxHp).toBe(standard.stats.maxHp);
+    // Gold = +12 levels of the budget: +18 attack (1.5 each), +12 defense (1 each).
     expect(gold.stats.attack).toBe(standard.stats.attack + 18);
     expect(gold.stats.defense).toBe(standard.stats.defense + 12);
     // No initiative upgrade in custom (fully normalized).

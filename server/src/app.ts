@@ -402,7 +402,6 @@ export function startGameServer(port = 8787, opts?: { botThinkMs?: number; botFi
             preset: req.preset,
             initiativeUpgrade: Math.max(0, Math.floor(req.initiativeUpgrade ?? 0)),
             rankedUpgrades: {
-              maxHp: Math.max(0, Math.floor(req.rankedUpgrades?.maxHp ?? 0)),
               attack: Math.max(0, Math.floor(req.rankedUpgrades?.attack ?? 0)),
               defense: Math.max(0, Math.floor(req.rankedUpgrades?.defense ?? 0)),
             },

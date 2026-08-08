@@ -51,8 +51,7 @@ export interface PowerDefinition {
   price: number;
   rarity: Rarity;
   uses?: number; // how many times the ability can be used per match; undefined = unlimited
-  baseDamage?: number; // multiplier on caster attack
-  flatDamage?: number; // flat damage added
+  attack?: number; // base damage — added to the caster's Attack stat when used
   healAmount?: number; // flat heal to target
   targetRule: TargetRule;
   effects?: EffectSpec[]; // applied to target(s)
@@ -246,8 +245,9 @@ export interface MatchRewards {
 // Networking (client <-> server)
 // ------------------------------------------------------------
 
+// Ranked stat upgrades — apply ONLY in ranked matches. HP deliberately has
+// NO ranked modifier: it starts at the 200 base and only rises from gear/powers.
 export type RankedUpgrades = {
-  maxHp: number;
   attack: number;
   defense: number;
 };

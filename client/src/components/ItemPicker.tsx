@@ -23,7 +23,9 @@ export function ItemPicker(props: {
     // Only items that fit this slot group
     .filter((i) => {
       if (i.kind !== accepts) return false;
-      if (i.kind === 'gear') return true;
+      // Gear is slot-specific: weapons only in the weapon slot, armor only in
+      // the armor slot, utility gear only in the utility slot.
+      if (i.kind === 'gear') return i.slot === slotId;
       const power = i as PowerDefinition;
       if (slotId === 'core') return power.powerKind === 'core';
       if (slotId === 'active1' || slotId === 'active2') return power.powerKind === 'active';

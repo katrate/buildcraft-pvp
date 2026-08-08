@@ -26,10 +26,14 @@ export const STAT_LABELS: Record<StatId, string> = {
 
 // ------------------------------------------------------------
 // Base combat stats (before gear/powers)
+// HP has NO ranked modifier: 200 by default, raised only by build
+// elements (armor/passives/cores that grant HP).
+// Attack is the base every damaging power builds on:
+//   damage = power.attack + attacker.Attack - defender.Defense
 // ------------------------------------------------------------
 export const BASE_STATS = {
-  maxHp: 100,
-  attack: 10,
+  maxHp: 200,
+  attack: 20,
   defense: 5,
   initiative: 10,
 };
@@ -86,10 +90,10 @@ export const RANK_COLORS: Record<string, string> = {
 // account and a veteran have comparable stat budgets in unranked.
 export const UNRANKED_REFERENCE_LEVEL = 10;
 export const NORMALIZATION_BRACKETS: Record<StatId, { floor: number; ceiling: number }> = {
-  maxHp: { floor: 80, ceiling: 220 },
-  attack: { floor: 8, ceiling: 22 },
-  defense: { floor: 3, ceiling: 14 },
-  initiative: { floor: 6, ceiling: 20 },
+  maxHp: { floor: 160, ceiling: 260 },
+  attack: { floor: 12, ceiling: 26 },
+  defense: { floor: 3, ceiling: 16 },
+  initiative: { floor: 6, ceiling: 22 },
 };
 
 // ------------------------------------------------------------
@@ -114,8 +118,10 @@ export const RANKED_UPGRADE = {
   baseCost: 1000,
   costStep: 250,
   maxLevel: 20, // absolute per-stat cap (rank may cap lower)
-  gains: { maxHp: 12, attack: 1.5, defense: 1 } as Partial<Record<StatId, number>>,
-  labels: { maxHp: 'Combat HP', attack: 'Combat Power', defense: 'Combat Armor' } as Record<string, string>,
+  // Only Attack and Defense get ranked modifiers — HP has none (200 base,
+  // build elements only). Attack is added to every hit you land.
+  gains: { attack: 1.5, defense: 1 } as Partial<Record<StatId, number>>,
+  labels: { attack: 'Combat Power', defense: 'Combat Armor' } as Record<string, string>,
 };
 
 // ------------------------------------------------------------
