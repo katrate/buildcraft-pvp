@@ -21,13 +21,14 @@ const pulse = keyframes`
 
 const BigNumber = styled.div<{ key: number }>`
   font-size: 6rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
-  background: linear-gradient(135deg, #ff9f43, #ffd166);
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #ff4655, #2dd4ff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 30px rgba(255, 159, 67, 0.35));
+  filter: drop-shadow(0 0 34px rgba(255, 70, 85, 0.45));
   animation: ${pop} 0.4s ease;
 `;
 
@@ -37,19 +38,21 @@ const BigCard = styled.div`
   align-items: center;
   gap: 10px;
   padding: 34px 54px;
-  border-radius: 26px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255,255,255,0.09);
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-top: 3px solid var(--accent);
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+  filter: drop-shadow(0 20px 60px rgba(0, 0, 0, 0.6));
   animation: ${pop} 0.25s ease;
 `;
 
 const ReadyText = styled.div`
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text);
   animation: ${pulse} 1.4s ease-in-out infinite;

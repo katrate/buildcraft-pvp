@@ -1,8 +1,26 @@
 import { usePlayer, setDevUnlockRanked } from '../state/store';
 import { useWsStatus } from '../services/ws';
-import { isRankedUnlocked, progressToNextLevel } from '../../../shared/src/progression';
+import { isRankedUnlocked, progressToNextLevel, rankForRating, rankStatusText } from '../../../shared/src/progression';
 import { RANKED_UNLOCK_LEVEL } from '../../../shared/src/constants';
-import { Button, Chip, DevZone, Fill, Logo, MenuButton, MenuGrid, MenuIcon, MenuScreen, MenuSub, Row, Track, Tiny } from '../ui/glass';
+import {
+  Button,
+  Chip,
+  DevZone,
+  Fill,
+  HeroAccent,
+  HeroTagline,
+  HeroTitle,
+  Kicker,
+  Logo,
+  MenuMain,
+  MenuShell,
+  NavIcon,
+  NavItem,
+  NavRail,
+  StatPill,
+  Tiny,
+  Track,
+} from '../ui/glass';
 
 export type Screen =
   | 'menu'
@@ -25,49 +43,103 @@ const ITEMS: { id: Screen; label: string; icon: string; sub: string }[] = [
 export function MainMenu(props: { onNavigate: (s: Screen) => void }) {
   const player = usePlayer();
   const status = useWsStatus();
+  const ranked = rankForRating(player.rank.rating);
 
   return (
-    <MenuScreen>
-      <Logo>
-        BUILDCRAFT PVP
-        <small>Build · Test · Fight · Earn · Experiment</small>
-      </Logo>
+    <MenuShell>
+      {/* ============ LEFT NAV RAIL ============ */}
+      <NavRail>
+        <Logo style={{ margin: '6px 6px 20px' }}>
+          BUILD<span className="red">CRAFT</span>
+          <small>PvP</small>
+        </Logo>
 
-      <Row gap={8}>
-        <Chip>Lv {player.level}</Chip>
-        <Chip tone="warn">🪙 {player.coins}</Chip>
-        <Chip tone={status === 'connected' ? 'good' : status === 'connecting' ? 'warn' : 'offline'}>
-          {status === 'connected' ? '● server online' : status === 'connecting' ? '○ connecting…' : '○ server offline'}
-        </Chip>
-      </Row>
-
-      <MenuGrid>
         {ITEMS.map((item) => (
-          <MenuButton key={item.id} onClick={() => props.onNavigate(item.id)}>
-            <MenuIcon>{item.icon}</MenuIcon>
-            {item.label}
-            <MenuSub>{item.sub}</MenuSub>
-          </MenuButton>
+          <NavItem key={item.id} onClick={() => props.onNavigate(item.id)}>
+            <NavIcon>{item.icon}</NavIcon>
+            <span>
+              {item.label}
+              <Tiny style={{ display: 'block', letterSpacing: '0.12em', marginTop: 2 }}>
+                {item.sub}
+              </Tiny>
+            </span>
+          </NavItem>
         ))}
-      </MenuGrid>
 
-      <div style={{ maxWidth: 460, width: '100%' }}>
-        <Tiny style={{ marginBottom: 4, display: 'block' }}>
-          Level {player.level} → {player.level + 1} · Ranked unlocks at level {RANKED_UNLOCK_LEVEL}
-        </Tiny>
-        <Track h={8}>
-          <Fill pct={progressToNextLevel(player.level, player.xp) * 100} color="var(--accent)" />
-        </Track>
-      </div>
+        <div style={{ flex: 1 }} />
 
-      <DevZone>
-        <Tiny>Dev tools</Tiny>
-        {!isRankedUnlocked(player.level) && (
-          <Button variant="ghost" size="sm" onClick={setDevUnlockRanked} title="Instantly reach the ranked-unlock threshold">
-            ⚡ Instantly Unlock Ranked (Level {RANKED_UNLOCK_LEVEL})
-          </Button>
-        )}
-      </DevZone>
-    </MenuScreen>
+        {/* Rail footer — quick stats */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Chip tone={status === 'connected' ? 'good' : status === 'connecting' ? 'warn' : 'offline'}>
+            {status === 'connected' ? '● server online' : status === 'connecting' ? '○ connecting…' : '○ server offline'}
+          </Chip>
+          <Tiny style={{ letterSpacing: '0.1em' }}>
+            LV {player.level} · RANKED {isRankedUnlocked(player.level) ? ranked.name.toUpperCase() : `LOCKED @${RANKED_UNLOCK_LEVEL}`}
+          </Tiny>
+          {!isRankedUnlocked(player.level) && (
+            <Button variant="ghost" size="sm" onClick={setDevUnlockRanked} title="Instantly reach the ranked-unlock threshold">
+              ⚡ Instantly Unlock Ranked (Level {RANKED_UNLOCK_LEVEL})
+            </Button>
+          )}
+        </div>
+      </NavRail>
+
+      {/* ============ HERO MAIN ============ */}
+      <MenuMain>
+        <Kicker>Multiplayer · Turn-based · Buildcraft</Kicker>
+
+        <HeroTitle>
+          BUILD YOUR
+          <br />
+          <HeroAccent>FIGHTER</HeroAccent>
+        </HeroTitle>
+
+        <HeroTagline>Build · Test · Fight · Earn · Experiment</HeroTagline>
+
+        {/* Player quick stats */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginTop: 8 }}>
+          <StatPill>
+            LEVEL
+            <b>{player.level}</b>
+          </StatPill>
+          <StatPill>
+            <span style={{ color: 'var(--warn)' }}>COINS</span>
+            <b>🪙 {player.coins}</b>
+          </StatPill>
+          <StatPill>
+            RECORD
+            <b>
+              {player.record.wins}W · {player.record.losses}L
+            </b>
+          </StatPill>
+          <StatPill>
+            RANK
+            <b style={isRankedUnlocked(player.level) ? { color: ranked.color } : { color: 'var(--text-dim)' }}>
+              {isRankedUnlocked(player.level) ? ranked.name.toUpperCase() : '—'}
+            </b>
+          </StatPill>
+        </div>
+
+        {/* XP bar */}
+        <div style={{ maxWidth: 560, width: '100%', marginTop: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Tiny style={{ letterSpacing: '0.16em', color: 'var(--text)' }}>
+              Level {player.level} → {player.level + 1}
+            </Tiny>
+            <Tiny>Ranked unlocks at level {RANKED_UNLOCK_LEVEL}</Tiny>
+          </div>
+          <Track h={10}>
+            <Fill pct={progressToNextLevel(player.level, player.xp) * 100} color="var(--accent)" />
+          </Track>
+          <Tiny style={{ display: 'block', marginTop: 6, textAlign: 'right' }}>
+            {Math.round(progressToNextLevel(player.level, player.xp) * 100)}% · {isRankedUnlocked(player.level) ? rankStatusText(player.rank) : 'keep fighting to unlock ranked'}
+          </Tiny>
+        </div>
+
+        <DevZone>
+          <Tiny>Dev tools</Tiny>
+        </DevZone>
+      </MenuMain>
+    </MenuShell>
   );
 }

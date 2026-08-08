@@ -114,9 +114,9 @@ export function App() {
 
   return (
     <AppShell>
-      {screen !== 'combat-practice' && screen !== 'combat-online' && screen !== 'countdown' && (
+      {screen !== 'menu' && screen !== 'combat-practice' && screen !== 'combat-online' && screen !== 'countdown' && (
         <TopBar>
-          <Brand onClick={() => navigate('menu')}>⚔ BuildCraft PvP</Brand>
+          <Brand onClick={() => navigate('menu')}>BuildCraft PVP</Brand>
           <Stats>
             <Chip>Lv {player.level}</Chip>
             <Chip tone="warn">🪙 {player.coins}</Chip>

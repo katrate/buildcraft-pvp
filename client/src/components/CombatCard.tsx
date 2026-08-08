@@ -24,7 +24,7 @@ export function CombatCard(props: {
   const dead = !c.alive;
   const shape = shapeVariant(c);
   const hpColor = c.hp / c.maxHp > 0.5 ? 'var(--good)' : c.hp / c.maxHp > 0.25 ? 'var(--warn)' : 'var(--bad)';
-  const teamColor = c.teamId === 0 ? '#4dd0e1' : '#ff9f43';
+  const teamColor = c.teamId === 0 ? '#2dd4ff' : '#ff4655';
 
   const totalUsesLeft = Object.values(c.usesLeft).reduce((a, b) => a + b, 0);
   const totalUsesMax = (c.build?.actives ?? []).reduce((a, p) => a + maxUsesFor(p, c.build!), 0);

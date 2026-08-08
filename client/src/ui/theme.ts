@@ -1,51 +1,55 @@
 // ============================================================
-// Glassmorphism design tokens for BuildCraft PvP.
+// "STRIKE" design tokens for BuildCraft PvP — Valorant × Fortnite.
 //
-// Keep the legacy CSS variable NAMES (--accent, --good, ...) so
-// inline styles and prop-passed colors elsewhere keep working.
+// Dark tactical base, Valorant-red primary, electric cyan/purple
+// energy accents, angular clipped-corner shapes, condensed display
+// type. Legacy CSS variable NAMES are preserved (--accent, --good,
+// ...) so inline styles and prop-passed colors elsewhere keep working.
 // ============================================================
 
 export const glassTheme = {
   colors: {
-    bg: '#070b14',
-    bgSoft: '#0c1220',
-    text: '#eaf0fb',
-    textDim: '#93a2bd',
-    accent: '#ff9f43',
-    accent2: '#4dd0e1',
+    bg: '#0a0c12',
+    bgSoft: '#10141d',
+    text: '#eef2f9',
+    textDim: '#8d97ac',
+    accent: '#ff4655', // Valorant red — primary CTA
+    accent2: '#2dd4ff', // electric cyan — energy secondary
     good: '#45d483',
-    bad: '#ff5d6c',
+    bad: '#ff6b81',
     warn: '#ffd166',
-    rare: '#5aa7ff',
-    epic: '#c77dff',
-    border: 'rgba(255, 255, 255, 0.10)',
-    borderSoft: 'rgba(255, 255, 255, 0.06)',
-    glass: 'rgba(255, 255, 255, 0.055)',
-    glassStrong: 'rgba(255, 255, 255, 0.10)',
+    rare: '#4d9fff',
+    epic: '#c06bff',
+    border: 'rgba(255, 255, 255, 0.14)',
+    borderSoft: 'rgba(255, 255, 255, 0.08)',
+    glass: 'rgba(255, 255, 255, 0.045)',
+    glassStrong: 'rgba(255, 255, 255, 0.09)',
     panelInner: 'rgba(255, 255, 255, 0.03)',
-    track: 'rgba(0, 0, 0, 0.35)',
-    overlay: 'rgba(4, 7, 13, 0.72)',
+    track: 'rgba(0, 0, 0, 0.45)',
+    overlay: 'rgba(5, 7, 12, 0.82)',
   },
   radius: {
-    sm: 10,
-    md: 14,
-    lg: 18,
-    xl: 24,
+    sm: 6,
+    md: 10,
+    lg: 14,
+    xl: 18,
     pill: 999,
   },
   blur: {
-    glass: 'blur(20px) saturate(160%)',
+    glass: 'blur(18px) saturate(140%)',
     soft: 'blur(6px)',
   },
   shadow: {
-    card: '0 12px 40px rgba(0, 0, 0, 0.45)',
-    lift: '0 18px 50px rgba(0, 0, 0, 0.55)',
-    glow: '0 0 26px rgba(255, 159, 67, 0.28)',
-    glowCyan: '0 0 26px rgba(77, 208, 225, 0.28)',
-    glowGreen: '0 0 18px rgba(69, 212, 131, 0.30)',
-    glowPurple: '0 0 18px rgba(199, 125, 255, 0.35)',
+    card: '0 10px 30px rgba(0, 0, 0, 0.5)',
+    lift: '0 18px 44px rgba(0, 0, 0, 0.6)',
+    glow: '0 0 22px rgba(255, 70, 85, 0.35)',
+    glowCyan: '0 0 22px rgba(45, 212, 255, 0.35)',
+    glowGreen: '0 0 16px rgba(69, 212, 131, 0.35)',
+    glowPurple: '0 0 18px rgba(192, 107, 255, 0.4)',
   },
-  font: "'Segoe UI', system-ui, -apple-system, sans-serif",
+  // Condensed, uppercase-heavy display face (Tungsten-ish) + techy body face
+  font: "'Chakra Petch', 'Segoe UI', system-ui, sans-serif",
+  fontDisplay: "'Rajdhani', 'Segoe UI', system-ui, sans-serif",
   fontMono: 'Consolas, "SF Mono", monospace',
 } as const;
 

@@ -1,10 +1,12 @@
 // ============================================================
-// BuildCraft PvP — glass UI primitives (styled-components)
+// BuildCraft PvP — "STRIKE" UI primitives (styled-components)
 //
-// Every visual element of the app is a React component here.
-// No plain CSS classes: screens import these and compose them.
+// Valorant × Fortnite inspired: dark tactical base, red primary,
+// cyan/purple energy accents, angular clipped corners, condensed
+// uppercase display type. Every visual element of the app is a
+// React component here — screens import these and compose them.
 // ============================================================
-import styled, { createGlobalStyle, css } from 'styled-components';
+import styled, { createGlobalStyle, css, keyframes } from 'styled-components';
 
 // styled-components v6 forwards unknown props to the DOM; filter the typed
 // props so booleans/numbers never leak as invalid HTML attributes.
@@ -13,27 +15,48 @@ const forwardFilter = <T extends string>(...names: T[]) => ({
 });
 
 // ------------------------------------------------------------
-// Global styles: CSS variables (legacy names kept), animated
-// aurora background, scrollbars, font smoothing.
+// Shared angular shape helpers
+// ------------------------------------------------------------
+// Clipped ("cut") corner — the signature Valorant corner treatment.
+export const cutCorners = (s = 14) => css`
+  clip-path: polygon(
+    0 0,
+    calc(100% - ${s}px) 0,
+    100% ${s}px,
+    100% 100%,
+    ${s}px 100%,
+    0 calc(100% - ${s}px)
+  );
+`;
+
+export const DISPLAY = css`
+  font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+`;
+
+// ------------------------------------------------------------
+// Global styles: CSS variables, animated energy background,
+// scrollbars, fonts.
 // ------------------------------------------------------------
 export const GlobalStyle = createGlobalStyle`
   :root {
-    --bg: #070b14;
-    --bg-soft: #0c1220;
-    --panel: rgba(255,255,255,0.055);
+    --bg: #0a0c12;
+    --bg-soft: #10141d;
+    --panel: rgba(255,255,255,0.045);
     --panel-2: rgba(255,255,255,0.09);
-    --border: rgba(255,255,255,0.10);
-    --text: #eaf0fb;
-    --text-dim: #93a2bd;
-    --accent: #ff9f43;
-    --accent-2: #4dd0e1;
+    --border: rgba(255,255,255,0.14);
+    --text: #eef2f9;
+    --text-dim: #8d97ac;
+    --accent: #ff4655;
+    --accent-2: #2dd4ff;
     --good: #45d483;
-    --bad: #ff5d6c;
+    --bad: #ff6b81;
     --warn: #ffd166;
-    --rare: #5aa7ff;
-    --epic: #c77dff;
-    --radius: 16px;
-    --shadow: 0 12px 40px rgba(0,0,0,0.45);
+    --rare: #4d9fff;
+    --epic: #c06bff;
+    --radius: 10px;
+    --shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   * { box-sizing: border-box; }
@@ -46,36 +69,43 @@ export const GlobalStyle = createGlobalStyle`
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
 
-  /* ambient aurora orbs behind everything */
-  body::before, body::after {
+  /* tactical grid floor behind everything */
+  body::before {
     content: '';
     position: fixed;
+    inset: 0;
     z-index: -2;
-    width: 55vmax;
-    height: 55vmax;
-    border-radius: 50%;
-    filter: blur(90px);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size: 46px 46px;
     pointer-events: none;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 100%);
   }
-  body::before {
-    top: -22vmax;
-    right: -18vmax;
-    background: radial-gradient(circle, rgba(77,208,225,0.16), transparent 65%);
-    animation: aurora-a 22s ease-in-out infinite alternate;
-  }
+
+  /* angled energy beams — red & cyan, like a loading screen */
   body::after {
-    bottom: -24vmax;
-    left: -16vmax;
-    background: radial-gradient(circle, rgba(255,159,67,0.14), transparent 65%);
-    animation: aurora-b 26s ease-in-out infinite alternate;
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -3;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 42% at 82% -8%, rgba(255, 70, 85, 0.16), transparent 70%),
+      radial-gradient(ellipse 55% 40% at 6% 108%, rgba(45, 212, 255, 0.13), transparent 70%),
+      radial-gradient(ellipse 45% 36% at 60% 116%, rgba(192, 107, 255, 0.10), transparent 70%);
+    animation: beam-drift 18s ease-in-out infinite alternate;
   }
-  @keyframes aurora-a { from { transform: translate(0,0) scale(1); } to { transform: translate(-6vmax, 4vmax) scale(1.15); } }
-  @keyframes aurora-b { from { transform: translate(0,0) scale(1.1); } to { transform: translate(5vmax, -3vmax) scale(0.95); } }
+  @keyframes beam-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-2.5vmax, 2vmax, 0) scale(1.08); }
+  }
 
   @keyframes glass-spin { to { transform: rotate(360deg); } }
   @keyframes glass-toast {
@@ -90,20 +120,35 @@ export const GlobalStyle = createGlobalStyle`
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.16);
     border-radius: 99px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
-  ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.24); background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.26); background-clip: content-box; }
 
   button { font-family: inherit; }
   input, textarea { font-family: inherit; }
-  h1, h2, h3 { margin: 0 0 10px; font-weight: 800; letter-spacing: -0.01em; }
-  h1 { font-size: 1.6rem; }
-  h2 { font-size: 1.25rem; }
-  h3 { font-size: 1.05rem; }
-  code { background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 6px; font-size: 0.85em; }
+
+  h1, h2, h3 {
+    margin: 0 0 10px;
+    font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.05;
+  }
+  h1 { font-size: 1.9rem; }
+  h2 { font-size: 1.4rem; }
+  h3 { font-size: 1.1rem; }
+  code {
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent-2);
+  }
+  ::selection { background: rgba(255, 70, 85, 0.4); }
 `;
 
 // ------------------------------------------------------------
@@ -112,8 +157,8 @@ export const GlobalStyle = createGlobalStyle`
 export const Screen = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
-  max-width: 1180px;
+  padding: 26px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
 `;
@@ -136,7 +181,11 @@ export const Col = styled.div<{ gap?: number }>`
 export const Grow = styled.div`flex: 1; min-width: 0;`;
 
 export const Muted = styled.span`color: var(--text-dim); font-size: 0.85rem;`;
-export const Tiny = styled.span`font-size: 0.75rem; color: var(--text-dim);`;
+export const Tiny = styled.span`
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+`;
 // Block-level variant for multi-line notes (spans can't contain divs)
 export const MutedBlock = styled.div`
   color: var(--text-dim);
@@ -150,43 +199,71 @@ export const MutedBlock = styled.div`
 export const P = styled.p`
   color: var(--text-dim);
   font-size: 0.85rem;
-  line-height: 1.5;
+  line-height: 1.55;
   margin: 0;
 `;
 export const B = styled.b`color: var(--text);`;
 
 export const Divider = styled.div`
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
   margin: 14px 0;
 `;
 
 // ------------------------------------------------------------
-// Glass surfaces
+// Kicker — small uppercase label with a red slash marker
 // ------------------------------------------------------------
-const glassSurface = css`
-  background: linear-gradient(160deg, rgba(255,255,255,0.085), rgba(255,255,255,0.03));
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255,255,255,0.08);
+export const Kicker = styled.div`
+  ${DISPLAY}
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+  &::before {
+    content: '';
+    width: 22px;
+    height: 3px;
+    background: var(--accent);
+    transform: skewX(-20deg);
+  }
+`;
+
+// ------------------------------------------------------------
+// Angular surfaces (clipped corners + drop shadow that follows shape)
+// ------------------------------------------------------------
+const angularSurface = css`
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.14);
 `;
 
 export const Panel = styled.div`
-  ${glassSurface}
-  border-radius: 18px;
-  padding: 18px;
+  ${angularSurface}
+  ${cutCorners(16)}
+  padding: 18px 20px;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45));
 `;
 
 export const PanelTitle = styled.div`
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
+  ${DISPLAY}
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.82rem;
+  letter-spacing: 0.2em;
+  color: var(--text);
   margin: 0 0 12px;
+  &::before {
+    content: '';
+    width: 18px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transform: skewX(-20deg);
+    flex-shrink: 0;
+  }
 `;
 
 // ------------------------------------------------------------
@@ -196,33 +273,35 @@ type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 export const Button = styled.button.withConfig(forwardFilter('variant', 'size', 'block'))<{ variant?: ButtonVariant; size?: ButtonSize; block?: boolean }>`
+  ${DISPLAY}
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 0.95rem;
+  border-radius: 4px;
+  padding: 9px 18px;
+  font-size: 0.85rem;
   font-weight: 600;
+  letter-spacing: 0.1em;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
-  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease, color 0.15s ease;
+  transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease, filter 0.15s ease;
 
-  ${(p) => p.size === 'sm' && 'padding: 6px 12px; font-size: 0.78rem; border-radius: 9px;'}
-  ${(p) => p.size === 'lg' && 'padding: 14px 26px; font-size: 1.05rem; border-radius: 14px;'}
+  ${(p) => p.size === 'sm' && 'padding: 5px 12px; font-size: 0.68rem; letter-spacing: 0.12em;'}
+  ${(p) => p.size === 'lg' && 'padding: 13px 28px; font-size: 0.95rem;'}
   ${(p) => p.block && 'width: 100%;'}
 
   ${(p) =>
     p.variant === 'primary' &&
     css`
-      background: linear-gradient(135deg, #ff9f43, #ff7847);
-      border: 1px solid rgba(255, 159, 67, 0.6);
-      color: #1a1206;
-      box-shadow: 0 6px 24px rgba(255, 159, 67, 0.28);
+      ${cutCorners(10)}
+      background: linear-gradient(120deg, #ff4655, #d92e3e);
+      border: 1px solid rgba(255, 70, 85, 0.7);
+      color: #fff;
+      filter: drop-shadow(0 6px 16px rgba(255, 70, 85, 0.28));
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #ffab57, #ff8550);
-        box-shadow: 0 8px 30px rgba(255, 159, 67, 0.42);
+        filter: drop-shadow(0 8px 22px rgba(255, 70, 85, 0.45)) brightness(1.12);
         transform: translateY(-1px);
       }
     `}
@@ -230,33 +309,42 @@ export const Button = styled.button.withConfig(forwardFilter('variant', 'size', 
     p.variant === 'ghost' &&
     css`
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
       color: var(--text-dim);
-      &:hover:not(:disabled) { color: var(--text); border-color: rgba(255,255,255,0.28); }
+      ${cutCorners(8)}
+      &:hover:not(:disabled) {
+        color: var(--accent);
+        border-color: rgba(255, 70, 85, 0.55);
+      }
     `}
   ${(p) =>
     p.variant === 'danger' &&
     css`
-      background: rgba(255, 93, 108, 0.10);
-      border: 1px solid rgba(255, 93, 108, 0.35);
-      color: #ff8b95;
-      &:hover:not(:disabled) { background: rgba(255, 93, 108, 0.18); }
+      ${cutCorners(8)}
+      background: rgba(255, 70, 85, 0.09);
+      border: 1px solid rgba(255, 70, 85, 0.4);
+      color: #ff8a94;
+      &:hover:not(:disabled) {
+        background: rgba(255, 70, 85, 0.18);
+        border-color: rgba(255, 70, 85, 0.65);
+      }
     `}
   ${(p) =>
     (!p.variant || p.variant === 'default') &&
     css`
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
+      ${cutCorners(8)}
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.14);
       color: var(--text);
       &:hover:not(:disabled) {
-        background: rgba(255,255,255,0.12);
-        border-color: rgba(255,255,255,0.24);
+        background: rgba(255,255,255,0.09);
+        border-color: rgba(255, 70, 85, 0.55);
         transform: translateY(-1px);
       }
     `}
 
-  &:active:not(:disabled) { transform: translateY(0) scale(0.98); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:active:not(:disabled) { transform: translateY(0) scale(0.97); }
+  &:disabled { opacity: 0.38; cursor: not-allowed; }
 `;
 
 // ------------------------------------------------------------
@@ -264,78 +352,95 @@ export const Button = styled.button.withConfig(forwardFilter('variant', 'size', 
 // ------------------------------------------------------------
 type ChipTone = 'default' | 'good' | 'warn' | 'offline' | 'epic';
 export const Chip = styled.span.withConfig(forwardFilter('tone'))<{ tone?: ChipTone }>`
+  ${DISPLAY}
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
-  border-radius: 99px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  font-size: 0.8rem;
+  gap: 6px;
+  padding: 3px 12px;
+  font-size: 0.68rem;
   font-weight: 600;
+  letter-spacing: 0.12em;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.14);
   color: var(--text-dim);
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
   ${(p) =>
     p.tone === 'good' &&
-    css`color: var(--good); border-color: rgba(69,212,131,0.35); background: rgba(69,212,131,0.08); box-shadow: 0 0 14px rgba(69,212,131,0.12);`}
+    css`color: var(--good); border-color: rgba(69,212,131,0.4); background: rgba(69,212,131,0.08);`}
   ${(p) =>
     p.tone === 'warn' &&
-    css`color: var(--warn); border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.08); box-shadow: 0 0 14px rgba(255,209,102,0.12);`}
+    css`color: var(--warn); border-color: rgba(255,209,102,0.4); background: rgba(255,209,102,0.08);`}
   ${(p) =>
     p.tone === 'offline' &&
-    css`color: var(--bad); border-color: rgba(255,93,108,0.35); background: rgba(255,93,108,0.08);`}
+    css`color: var(--bad); border-color: rgba(255,107,129,0.4); background: rgba(255,107,129,0.08);`}
   ${(p) =>
     p.tone === 'epic' &&
-    css`color: var(--epic); border-color: rgba(199,125,255,0.4); background: rgba(199,125,255,0.08); box-shadow: 0 0 14px rgba(199,125,255,0.15);`}
+    css`color: var(--epic); border-color: rgba(192,107,255,0.45); background: rgba(192,107,255,0.08); box-shadow: 0 0 14px rgba(192,107,255,0.12);`}
 `;
 
 // ------------------------------------------------------------
-// Stat bars / tracks
+// Stat bars / tracks (sharp, with a moving shine)
 // ------------------------------------------------------------
 export const StatBar = styled.div`display: flex; flex-direction: column; gap: 3px;`;
 
 export const LabelRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-dim);
 `;
 
 export const Track = styled.div.withConfig(forwardFilter('h'))<{ h?: number }>`
   height: ${(p) => p.h ?? 10}px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
+`;
+
+const fillSheen = keyframes`
+  0% { transform: translateX(-60%); }
+  60%, 100% { transform: translateX(120%); }
 `;
 
 export const Fill = styled.div.withConfig(forwardFilter('pct', 'color'))<{ pct: number; color?: string }>`
   width: ${(p) => p.pct}%;
   height: 100%;
-  border-radius: 99px;
+  border-radius: 2px;
   background: ${(p) => p.color ?? 'var(--accent)'};
   transition: width 0.35s ease;
-  box-shadow: 0 0 10px ${(p) => p.color ?? 'var(--accent)'}66;
+  position: relative;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.25);
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+    animation: ${fillSheen} 2.2s ease-in-out infinite;
+  }
 `;
 
 // ------------------------------------------------------------
 // Forms
 // ------------------------------------------------------------
 export const Input = styled.input`
-  background: rgba(0, 0, 0, 0.30);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255,255,255,0.14);
   color: var(--text);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 10px 14px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   outline: none;
   width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  &::placeholder { color: rgba(141, 151, 172, 0.55); }
   &:focus {
-    border-color: rgba(255, 159, 67, 0.6);
-    box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.15);
+    border-color: rgba(255, 70, 85, 0.75);
+    box-shadow: 0 0 0 3px rgba(255, 70, 85, 0.16);
   }
-  &::placeholder { color: rgba(147, 162, 189, 0.6); }
 `;
 
 // ------------------------------------------------------------
@@ -356,47 +461,57 @@ export const Toast = styled.div`
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  ${glassSurface}
-  border-radius: 14px;
-  padding: 12px 22px;
+  ${angularSurface}
+  ${cutCorners(12)}
+  padding: 12px 24px;
   color: var(--text);
-  border-color: rgba(255,159,67,0.5);
+  border-color: rgba(255,70,85,0.6);
   z-index: 200;
   animation: glass-toast 0.25s ease;
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));
 `;
 
 // ------------------------------------------------------------
-// Tabs
+// Tabs (angular underline style)
 // ------------------------------------------------------------
-export const Tabs = styled.div`display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center;`;
+export const Tabs = styled.div`
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+`;
 
 export const Tab = styled.button.withConfig(forwardFilter('active'))<{ active?: boolean }>`
-  padding: 8px 16px;
-  border-radius: 99px;
-  border: 1px solid rgba(255,255,255,0.12);
+  ${DISPLAY}
+  padding: 9px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
   transition: all 0.15s ease;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
   ${(p) =>
     p.active &&
     css`
-      background: rgba(255, 159, 67, 0.12);
       color: var(--accent);
-      border-color: rgba(255, 159, 67, 0.5);
-      box-shadow: 0 0 16px rgba(255, 159, 67, 0.15);
+      border-bottom-color: var(--accent);
+      background: linear-gradient(180deg, rgba(255,70,85,0.12), transparent 70%);
     `}
-  &:hover { border-color: rgba(255,255,255,0.3); color: var(--text); }
+  &:hover { color: var(--text); border-bottom-color: rgba(255,70,85,0.5); }
 `;
 
 export const EmptyState = styled.div`
   text-align: center;
   color: var(--text-dim);
   padding: 40px 20px;
-  border: 1px dashed rgba(255,255,255,0.16);
-  border-radius: 16px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 6px;
   background: rgba(255,255,255,0.02);
 `;
 
@@ -416,7 +531,7 @@ export const DevZone = styled.div`
   gap: 10px;
   margin-top: 8px;
   padding-top: 12px;
-  border-top: 1px dashed rgba(255,255,255,0.16);
+  border-top: 1px dashed rgba(255,255,255,0.18);
   max-width: 460px;
   width: 100%;
   justify-content: center;
@@ -428,7 +543,7 @@ export const DevZone = styled.div`
 export const Overlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(4, 7, 13, 0.72);
+  background: rgba(5, 7, 12, 0.8);
   backdrop-filter: blur(10px) saturate(120%);
   -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
@@ -438,9 +553,9 @@ export const Overlay = styled.div`
 `;
 
 export const OverlayCard = styled.div`
-  ${glassSurface}
-  border-radius: 22px;
-  padding: 30px;
+  ${angularSurface}
+  ${cutCorners(18)}
+  padding: 34px;
   max-width: 460px;
   width: calc(100% - 40px);
   display: flex;
@@ -448,12 +563,14 @@ export const OverlayCard = styled.div`
   gap: 14px;
   text-align: center;
   animation: glass-pop 0.22s ease;
+  border-top: 3px solid var(--accent);
+  filter: drop-shadow(0 20px 60px rgba(0, 0, 0, 0.6));
 `;
 
 export const ModalBackdrop = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(4, 7, 13, 0.7);
+  background: rgba(5, 7, 12, 0.78);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -464,19 +581,29 @@ export const ModalBackdrop = styled.div`
 `;
 
 export const Modal = styled.div`
-  ${glassSurface}
-  border-radius: 20px;
+  ${angularSurface}
+  border-radius: 6px;
+  border-top: 3px solid var(--accent);
   max-width: 720px;
   width: 100%;
   max-height: 82vh;
   overflow-y: auto;
   padding: 20px;
   animation: glass-pop 0.2s ease;
+  filter: drop-shadow(0 20px 60px rgba(0, 0, 0, 0.6));
 `;
 
 // ------------------------------------------------------------
-// Menu screen
+// Menu shell — left nav rail + hero main area (game menu layout)
 // ------------------------------------------------------------
+export const MenuShell = styled.div`
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+// Centered full-screen container (intro / countdown / fallbacks)
 export const MenuScreen = styled.div`
   flex: 1;
   display: flex;
@@ -488,58 +615,173 @@ export const MenuScreen = styled.div`
   overflow-y: auto;
 `;
 
-export const Logo = styled.div`
-  font-size: 2.7rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  background: linear-gradient(135deg, #ff9f43, #ffd166, #4dd0e1);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-align: center;
-  filter: drop-shadow(0 0 24px rgba(255, 159, 67, 0.25));
-  small {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    font-weight: 500;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    margin-top: 8px;
+export const NavRail = styled.div`
+  width: 292px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 26px 16px 20px;
+  background: rgba(7, 9, 14, 0.72);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-right: 1px solid rgba(255,255,255,0.1);
+  overflow-y: auto;
+  position: relative;
+  z-index: 2;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2), transparent);
+    opacity: 0.9;
   }
 `;
 
-export const MenuGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+export const NavItem = styled.button.withConfig(forwardFilter('active'))<{ active?: boolean }>`
+  ${DISPLAY}
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  max-width: 640px;
+  text-align: left;
+  padding: 13px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.14s ease;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14%;
+    bottom: 14%;
+    width: 3px;
+    background: var(--accent);
+    transform: skewX(-14deg);
+    opacity: 0;
+    transition: opacity 0.14s ease;
+  }
+  ${(p) =>
+    p.active &&
+    css`
+      color: #fff;
+      background: linear-gradient(90deg, rgba(255, 70, 85, 0.18), rgba(255, 70, 85, 0.03));
+      border-color: rgba(255, 70, 85, 0.4);
+      &::before { opacity: 1; }
+    `}
+  &:hover:not(:disabled) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255,255,255,0.16);
+    transform: translateX(2px);
+    &::before { opacity: 1; }
+  }
 `;
 
-export const MenuButton = styled.button`
-  ${glassSurface}
-  padding: 26px 18px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  border-radius: 20px;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.18s ease;
+export const NavIcon = styled.span`
+  font-size: 1.1rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+`;
+
+export const MenuMain = styled.div`
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
-  &:hover {
-    border-color: rgba(255, 159, 67, 0.55);
-    transform: translateY(-3px);
-    box-shadow: 0 18px 50px rgba(0,0,0,0.5), 0 0 30px rgba(255, 159, 67, 0.15);
-  }
-  &:active { transform: translateY(-1px) scale(0.98); }
+  justify-content: center;
+  gap: 20px;
+  padding: 40px 32px;
+  overflow-y: auto;
+  position: relative;
 `;
-export const MenuIcon = styled.span`font-size: 1.9rem; filter: drop-shadow(0 0 12px rgba(255,255,255,0.12));`;
-export const MenuSub = styled.span`font-size: 0.72rem; color: var(--text-dim); font-weight: 500;`;
+
+export const HeroTitle = styled.div`
+  ${DISPLAY}
+  font-size: clamp(2.6rem, 6.5vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: #fff;
+  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.6));
+`;
+
+export const HeroAccent = styled.span`
+  background: linear-gradient(100deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+`;
+
+export const HeroTagline = styled.div`
+  ${DISPLAY}
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  color: var(--text-dim);
+  text-align: center;
+  text-transform: uppercase;
+`;
+
+export const StatPill = styled.div`
+  ${DISPLAY}
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 18px;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  text-align: center;
+  min-width: 88px;
+  b {
+    color: var(--text);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+`;
+
+// ------------------------------------------------------------
+// Logo / brand
+// ------------------------------------------------------------
+export const Logo = styled.div`
+  ${DISPLAY}
+  font-size: 2.3rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-align: center;
+  line-height: 0.9;
+  filter: drop-shadow(0 0 22px rgba(255, 70, 85, 0.3));
+  span.red { color: var(--accent); }
+  small {
+    display: block;
+    font-size: 0.68rem;
+    font-family: 'Chakra Petch', sans-serif;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    margin-top: 9px;
+  }
+`;
 
 // ------------------------------------------------------------
 // Top bar
@@ -548,27 +790,44 @@ export const TopBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  background: rgba(10, 15, 26, 0.6);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  padding: 11px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  background: rgba(8, 10, 16, 0.82);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: inset 3px 0 0 var(--accent), 0 6px 24px rgba(0, 0, 0, 0.4);
 `;
 
 export const Brand = styled.div`
-  font-weight: 800;
+  ${DISPLAY}
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   cursor: pointer;
-  background: linear-gradient(135deg, #ff9f43, #4dd0e1);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  letter-spacing: 0.02em;
+  color: #fff;
+  &::before {
+    content: '';
+    width: 20px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transform: skewX(-20deg);
+  }
+  &:hover { color: var(--accent); }
 `;
 
-export const Stats = styled.div`display: flex; gap: 12px; align-items: center; font-size: 0.85rem; flex-wrap: wrap;`;
+export const Stats = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+`;
 
 // ------------------------------------------------------------
 // Item cards
@@ -576,7 +835,7 @@ export const Stats = styled.div`display: flex; gap: 12px; align-items: center; f
 export const ItemGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  gap: 14px;
 `;
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic';
@@ -588,23 +847,26 @@ const rarityColors: Record<Rarity, string> = {
 };
 
 export const ItemCard = styled.div.withConfig(forwardFilter('rarity', 'clickable', 'selected'))<{ rarity?: Rarity; clickable?: boolean; selected?: boolean }>`
-  ${glassSurface}
-  border-radius: 16px;
+  ${angularSurface}
+  ${cutCorners(14)}
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: all 0.16s ease;
   position: relative;
-  border-left: 3px solid ${(p) => (p.rarity ? rarityColors[p.rarity] : 'transparent')};
+  border-left: 4px solid ${(p) => (p.rarity ? rarityColors[p.rarity] : 'transparent')};
+  border-radius: 4px;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.4));
   ${(p) => p.clickable && 'cursor: pointer;'}
   ${(p) =>
     p.selected &&
-    css`border-color: rgba(255,159,67,0.6); box-shadow: 0 0 0 2px rgba(255,159,67,0.35), 0 12px 40px rgba(0,0,0,0.45);`}
+    css`border-left-color: var(--accent); border-color: rgba(255,70,85,0.6); filter: drop-shadow(0 0 18px rgba(255,70,85,0.25));`}
   &:hover {
     transform: translateY(-2px);
-    border-color: rgba(255, 159, 67, 0.45);
-    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
+    border-left-color: var(--accent);
+    border-color: rgba(255, 70, 85, 0.5);
+    filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.5));
   }
 `;
 
@@ -612,28 +874,41 @@ export const ItemHead = styled.div`display: flex; align-items: center; gap: 10px
 export const ItemIcon = styled.div<{ size?: number }>`
   width: ${(p) => p.size ?? 42}px;
   height: ${(p) => p.size ?? 42}px;
-  border-radius: 12px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: ${(p) => (p.size ? '1.1rem' : '1.4rem')};
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(150deg, rgba(255,255,255,0.09), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.14);
   flex-shrink: 0;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
 `;
-export const ItemName = styled.div`font-weight: 700; font-size: 0.95rem; line-height: 1.15;`;
-export const ItemDesc = styled.div`font-size: 0.8rem; color: var(--text-dim); flex: 1; line-height: 1.45;`;
+export const ItemName = styled.div`
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+export const ItemDesc = styled.div`font-size: 0.78rem; color: var(--text-dim); flex: 1; line-height: 1.45;`;
 export const ItemFooter = styled.div`display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 8px;`;
-export const Price = styled.span`color: var(--warn); font-weight: 700; font-size: 0.85rem;`;
-export const OwnedBadge = styled.span`color: var(--good); font-size: 0.8rem; font-weight: 700;`;
+export const Price = styled.span`
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em;
+`;
+export const OwnedBadge = styled.span`color: var(--good); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;`;
 
 // ------------------------------------------------------------
 // Build editor
 // ------------------------------------------------------------
 export const BuildLayout = styled.div`
   display: grid;
-  grid-template-columns: 250px 1fr 280px;
+  grid-template-columns: 240px 1fr 290px;
   gap: 16px;
   align-items: start;
   @media (max-width: 1000px) { grid-template-columns: 1fr; }
@@ -642,9 +917,9 @@ export const BuildLayout = styled.div`
 export const SlotList = styled.div`display: flex; flex-direction: column; gap: 10px;`;
 
 export const SlotCard = styled.button`
-  background: rgba(255,255,255,0.04);
-  border: 1px dashed rgba(255,255,255,0.18);
-  border-radius: 14px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
   padding: 12px;
   display: flex;
   align-items: center;
@@ -654,26 +929,38 @@ export const SlotCard = styled.button`
   text-align: left;
   width: 100%;
   color: var(--text);
-  &:hover { border-color: rgba(255, 159, 67, 0.6); background: rgba(255,159,67,0.05); }
+  position: relative;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  &:hover {
+    border-color: rgba(255, 70, 85, 0.6);
+    background: rgba(255,70,85,0.05);
+    transform: translateX(2px);
+  }
 `;
 
 export const SlotLabel = styled.div`
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  ${DISPLAY}
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
   color: var(--text-dim);
-  font-weight: 700;
+  font-weight: 600;
 `;
-export const SlotItem = styled.div`font-weight: 700; font-size: 0.95rem;`;
-export const SlotEmpty = styled.div`color: var(--text-dim); font-style: italic; font-size: 0.85rem;`;
+export const SlotItem = styled.div`
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+`;
+export const SlotEmpty = styled.div`color: var(--text-dim); font-style: italic; font-size: 0.82rem;`;
 
 export const StatBlock = styled.div`display: flex; flex-direction: column; gap: 10px;`;
 
 export const PresetTab = styled.button.withConfig(forwardFilter('active'))<{ active?: boolean }>`
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 4px;
   border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.03);
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
@@ -681,12 +968,15 @@ export const PresetTab = styled.button.withConfig(forwardFilter('active'))<{ act
   text-align: left;
   color: var(--text);
   flex: 1;
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   ${(p) =>
     p.active &&
     css`
-      border-color: rgba(255, 159, 67, 0.55);
-      background: rgba(255, 159, 67, 0.10);
-      box-shadow: 0 0 16px rgba(255, 159, 67, 0.12);
+      border-color: rgba(255, 70, 85, 0.6);
+      background: linear-gradient(90deg, rgba(255,70,85,0.14), rgba(255,70,85,0.03));
+      box-shadow: inset 3px 0 0 var(--accent);
     `}
   &:hover { border-color: var(--accent-2); }
 `;
@@ -721,6 +1011,22 @@ export const Battlefield = styled.div`
   flex: 1;
   min-height: 0;
   align-items: center;
+  position: relative;
+  &::before {
+    content: 'VS';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: rgba(255, 70, 85, 0.4);
+    letter-spacing: 0.1em;
+    z-index: 1;
+    pointer-events: none;
+    text-shadow: 0 0 30px rgba(255, 70, 85, 0.5);
+  }
 `;
 
 export const TeamCol = styled.div`
@@ -734,63 +1040,79 @@ export const TeamCol = styled.div`
 `;
 
 export const TeamHead = styled.div`
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  ${DISPLAY}
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
   color: var(--text-dim);
   text-align: center;
-  font-weight: 700;
+  font-weight: 600;
+  padding: 2px 0 6px;
 `;
 
 export const CombatantCard = styled.div.withConfig(forwardFilter('acting', 'dead', 'targetable', 'allyTarget'))<{ acting?: boolean; dead?: boolean; targetable?: boolean; allyTarget?: boolean }>`
-  ${glassSurface}
-  border-radius: 16px;
+  ${angularSurface}
+  ${cutCorners(14)}
   padding: 12px;
   display: flex;
   gap: 12px;
   align-items: center;
   transition: all 0.15s ease;
-  ${(p) => p.acting && css`border-color: rgba(255,159,67,0.65); box-shadow: 0 0 0 2px rgba(255,159,67,0.25), 0 12px 40px rgba(0,0,0,0.45);`}
-  ${(p) => p.dead && 'opacity: 0.35; filter: grayscale(0.85);'}
+  border-radius: 4px;
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.4));
+  ${(p) =>
+    p.acting &&
+    css`border-color: rgba(255,70,85,0.8); filter: drop-shadow(0 0 16px rgba(255,70,85,0.3)); box-shadow: inset 3px 0 0 var(--accent);`}
+  ${(p) => p.dead && 'opacity: 0.35; filter: grayscale(0.9);'}
   ${(p) => p.targetable && 'cursor: pointer;'}
-  ${(p) => p.targetable && css`&:hover { border-color: var(--bad); transform: translateY(-2px); }`}
+  ${(p) => p.targetable && css`&:hover { border-color: var(--bad); transform: translateY(-2px); filter: drop-shadow(0 0 14px rgba(255,107,129,0.35)); }`}
   ${(p) => p.allyTarget && 'cursor: pointer;'}
   ${(p) => p.allyTarget && css`&:hover { border-color: var(--good); transform: translateY(-2px); }`}
 `;
 
 export const Shape = styled.div.withConfig(forwardFilter('variant', 'color'))<{ variant: 'circle' | 'square' | 'triangle' | 'diamond'; color: string }>`
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(0, 0, 0, 0.7);
   font-size: 0.8rem;
+  font-family: 'Rajdhani', sans-serif;
   background: ${(p) => p.color};
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+  border: 2px solid rgba(255,255,255,0.28);
   ${(p) => p.variant === 'circle' && 'border-radius: 50%;'}
-  ${(p) => p.variant === 'square' && 'border-radius: 8px;'}
-  ${(p) => p.variant === 'triangle' && css`clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0;`}
-  ${(p) => p.variant === 'diamond' && css`transform: rotate(45deg); border-radius: 6px; & > span { transform: rotate(-45deg); }`}
+  ${(p) => p.variant === 'square' && 'border-radius: 6px;'}
+  ${(p) => p.variant === 'triangle' && css`clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; border: none;`}
+  ${(p) => p.variant === 'diamond' && css`transform: rotate(45deg); border-radius: 4px; & > span { transform: rotate(-45deg); }`}
 `;
 
 export const CbInfo = styled.div`flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0;`;
-export const CbName = styled.div`font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
+export const CbName = styled.div`
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
 export const CbEffects = styled.div`display: flex; gap: 4px; flex-wrap: wrap; min-height: 16px;`;
 
 export const FxBadge = styled.span.withConfig(forwardFilter('ready'))<{ ready?: boolean }>`
-  font-size: 0.68rem;
-  background: rgba(255,255,255,0.08);
+  font-size: 0.66rem;
+  background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 1px 6px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   color: var(--text-dim);
-  ${(p) => p.ready && css`color: var(--epic); border-color: rgba(199,125,255,0.5); box-shadow: 0 0 10px rgba(199,125,255,0.2);`}
+  ${(p) => p.ready && css`color: var(--epic); border-color: rgba(192,107,255,0.55); box-shadow: 0 0 10px rgba(192,107,255,0.2);`}
 `;
 
 export const CbSide = styled.div`display: flex; flex-direction: column; gap: 4px; width: 110px; flex-shrink: 0;`;
@@ -799,11 +1121,12 @@ export const UltPips = styled.div`display: flex; gap: 3px; justify-content: flex
 export const Pip = styled.span.withConfig(forwardFilter('on'))<{ on?: boolean }>`
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: 2px;
+  transform: rotate(45deg);
   background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.16);
   transition: all 0.2s ease;
-  ${(p) => p.on && css`background: var(--epic); border-color: var(--epic); box-shadow: 0 0 8px rgba(199,125,255,0.8);`}
+  ${(p) => p.on && css`background: var(--epic); border-color: var(--epic); box-shadow: 0 0 8px rgba(192,107,255,0.9);`}
 `;
 
 // ------------------------------------------------------------
@@ -818,43 +1141,51 @@ export const AbilityBar = styled.div`
 `;
 
 export const AbilityButton = styled.button.withConfig(forwardFilter('ultimate', 'selected'))<{ ultimate?: boolean; selected?: boolean }>`
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.14);
   color: var(--text);
-  border-radius: 14px;
+  border-radius: 4px;
   padding: 10px 14px;
-  min-width: 120px;
+  min-width: 128px;
   text-align: left;
   cursor: pointer;
   transition: all 0.12s ease;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  ${(p) => p.ultimate && css`border-color: rgba(199,125,255,0.5); background: rgba(199,125,255,0.07);`}
-  ${(p) => p.selected && css`border-color: var(--accent); background: rgba(255,159,67,0.10); box-shadow: 0 0 0 2px rgba(255,159,67,0.3);`}
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  ${(p) => p.ultimate && css`border-color: rgba(192,107,255,0.55); background: rgba(192,107,255,0.06);`}
+  ${(p) => p.selected && css`border-color: var(--accent); background: rgba(255,70,85,0.1); box-shadow: inset 3px 0 0 var(--accent);`}
   &:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:disabled { opacity: 0.38; cursor: not-allowed; }
 `;
 
-export const AbName = styled.span`font-weight: 700; font-size: 0.85rem;`;
+export const AbName = styled.span`
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
 export const AbMeta = styled.span.withConfig(forwardFilter('ready'))<{ ready?: boolean }>`
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   color: var(--text-dim);
+  letter-spacing: 0.03em;
   ${(p) => p.ready && 'color: var(--epic);'}
 `;
 
 export const LogBox = styled.div`
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
   padding: 12px;
   height: 150px;
   overflow-y: auto;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-family: Consolas, monospace;
   line-height: 1.5;
   color: #b9c4d4;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
 `;
 
 export const LogLine = styled.div.withConfig(forwardFilter('round', 'damage'))<{ round?: boolean; damage?: boolean }>`
