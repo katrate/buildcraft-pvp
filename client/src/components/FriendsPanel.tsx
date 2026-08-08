@@ -118,7 +118,7 @@ export function FriendsPanel() {
                 </Chip>
               </div>
               <Row gap={8}>
-                <Button size="sm" onClick={() => inviteFriend(f.playerId)} title="Invite to your party (they must be online to join)">
+                <Button size="sm" onClick={() => inviteFriend(f.playerId)}>
                   Invite
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void removeFriend(f.playerId)}>

@@ -63,7 +63,6 @@ export function PartyPanel() {
                 <Chip
                   tone={m.ready ? 'good' : 'offline'}
                   style={{ marginLeft: 8 }}
-                  title={m.ready ? 'Ready for matchmaking' : 'Not ready — matchmaking is blocked'}
                 >
                   {m.ready ? (
                     <><I n="check" /> ready</>

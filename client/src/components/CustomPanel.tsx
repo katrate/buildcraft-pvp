@@ -18,16 +18,16 @@ import type { CustomNorm } from '../../../shared/src/types';
 import { I } from '../ui/icons';
 import { Button, Chip, Col, Divider, Input, Panel, PanelTitle, P, Row, Tiny, UpgradeRow } from '../ui/glass';
 
-const NORMS: { value: CustomNorm; label: string; hint: string }[] = [
-  { value: 'standard', label: 'Standard (unranked)', hint: 'Normalized like unranked — no stat budgets' },
-  { value: 'iron', label: 'Iron budget', hint: 'Normalized to Iron-level stats' },
-  { value: 'bronze', label: 'Bronze budget', hint: 'Normalized to Bronze-level stats' },
-  { value: 'silver', label: 'Silver budget', hint: 'Normalized to Silver-level stats' },
-  { value: 'gold', label: 'Gold budget', hint: 'Normalized to Gold-level stats' },
-  { value: 'platinum', label: 'Platinum budget', hint: 'Normalized to Platinum-level stats' },
-  { value: 'diamond', label: 'Diamond budget', hint: 'Normalized to Diamond-level stats' },
-  { value: 'divine', label: 'Divine budget', hint: 'Normalized to Divine-level stats' },
-  { value: 'supreme', label: 'Supreme budget', hint: 'Normalized to Supreme-level stats' },
+const NORMS: { value: CustomNorm; label: string }[] = [
+  { value: 'standard', label: 'Standard (unranked)' },
+  { value: 'iron', label: 'Iron budget' },
+  { value: 'bronze', label: 'Bronze budget' },
+  { value: 'silver', label: 'Silver budget' },
+  { value: 'gold', label: 'Gold budget' },
+  { value: 'platinum', label: 'Platinum budget' },
+  { value: 'diamond', label: 'Diamond budget' },
+  { value: 'divine', label: 'Divine budget' },
+  { value: 'supreme', label: 'Supreme budget' },
 ];
 
 const NORM_LABEL: Record<CustomNorm, string> = Object.fromEntries(
@@ -125,7 +125,6 @@ export function CustomPanel() {
                     key={n.value}
                     size="sm"
                     variant={lobby!.norm === n.value ? 'primary' : 'default'}
-                    title={n.hint}
                     onClick={() => setCustomNorm(n.value)}
                   >
                     {n.label}
@@ -195,7 +194,6 @@ export function CustomPanel() {
                 variant="primary"
                 size="lg"
                 disabled={!canStart}
-                title={canStart ? 'Start the match (stats normalized to the chosen budget)' : 'Need at least one player on each team'}
                 onClick={() => startCustomMatch()}
               >
                 Start Match <I n="play" />
@@ -232,10 +230,7 @@ export function CustomPanel() {
                 <Tiny style={{ marginLeft: 8 }}>friend</Tiny>
               </div>
               <Row gap={8}>
-                <Button
-                  onClick={() => inviteCustomFriend(f.playerId)}
-                  title="Invite to your custom lobby (creates one if needed; friend must be online)"
-                >
+                <Button onClick={() => inviteCustomFriend(f.playerId)}>
                   Invite
                 </Button>
                 <Button variant="ghost" onClick={() => removeFriend(f.playerId)}>Remove</Button>

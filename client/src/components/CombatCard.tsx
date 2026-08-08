@@ -39,7 +39,6 @@ export function CombatCard(props: {
       targetable={targetMode === 'enemy'}
       allyTarget={targetMode === 'ally'}
       onClick={targetMode && !dead ? () => onTarget?.(c.id) : undefined}
-      title={dead ? `${c.name} — eliminated` : c.name}
     >
       <Shape variant={shape} color={dead ? '#3a4354' : teamColor} size={34}>
         <span>{dead ? <I n="close" /> : c.isBot ? '' : c.name[0]}</span>
@@ -48,22 +47,19 @@ export function CombatCard(props: {
       <StatBar label="HP" value={c.hp} max={c.maxHp} color={hpColor} height={6} />
       <CbEffects>
         {c.effects.map((e) => (
-          <FxBadge
-            key={e.uid}
-            title={`${e.displayName}${e.duration > 0 ? ` (${e.duration} turns)` : ''}${e.amount ? ` — ${e.amount}` : ''}`}
-          >
+          <FxBadge key={e.uid}>
             <I n={(EFFECT_META[e.kind]?.icon ?? e.icon) as IconName} />
             {e.amount ? Math.round(e.amount) : ''}
           </FxBadge>
         ))}
         {c.ultimate && (
-          <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX} title="Ultimate charge">
+          <FxBadge ready={c.ultimate.charge >= ULTIMATE_CHARGE_MAX}>
             <I n="starFourPoints" /> {c.ultimate.charge}/{ULTIMATE_CHARGE_MAX}
           </FxBadge>
         )}
       </CbEffects>
       {c.ultimate && (
-        <UltPips title="Ultimate charge (fills each round and on kills)">
+        <UltPips>
           {Array.from({ length: ULTIMATE_CHARGE_MAX }).map((_, i) => (
             <Pip key={i} on={i < c.ultimate!.charge} />
           ))}

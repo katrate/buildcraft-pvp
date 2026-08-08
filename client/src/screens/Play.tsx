@@ -86,7 +86,6 @@ export function Play(props: {
   const leaderBand = party ? RATING_BANDS[leaderTier] : null;
   const unreadyMembers = party ? party.members.filter((m) => !m.ready) : [];
   const allReady = unreadyMembers.length === 0;
-  const unreadyNames = unreadyMembers.map((m) => m.name).join(', ');
   // Ranked is 5v5 only — any party up to 5 fits (empty slots fill with real
   // players), so only a party of 6+ is too big for ranked.
   const rankedTooBig = inParty && partySize > 5;
@@ -125,7 +124,7 @@ export function Play(props: {
           <ScreenTitle>Play</ScreenTitle>
         </div>
         <Row>
-          <Chip title="Active preset">Preset · {activePreset.name}</Chip>
+          <Chip>Preset · {activePreset.name}</Chip>
           <BackButton onBack={props.onBack} />
         </Row>
       </ScreenHead>
@@ -169,19 +168,6 @@ export function Play(props: {
                       key={ts}
                       size="lg"
                       disabled={status !== 'connected' || tooBig || notReady || (inQueue && queue.mode !== 'unranked')}
-                      title={
-                        status !== 'connected'
-                          ? 'Server offline — start it with npm run dev'
-                          : inQueue && queue.mode !== 'unranked'
-                            ? 'Already in the ranked queue — cancel first'
-                            : tooBig
-                              ? `Party of ${partySize} doesn't fit ${ts}v${ts} — pick a bigger team size`
-                              : notReady
-                                ? `Waiting for ${unreadyNames} to ready up…`
-                                : inParty
-                                  ? `Queue your whole party (${partySize}) for unranked ${ts}v${ts}`
-                                  : `Join ${ts}v${ts} unranked queue`
-                      }
                       onClick={() => joinQueue(ts, 'unranked')}
                     >
                       {ts}v{ts}
@@ -223,15 +209,6 @@ export function Play(props: {
                     variant="primary"
                     size="lg"
                     disabled={status !== 'connected' || inParty || (inQueue && queue.mode !== 'ranked')}
-                    title={
-                      status !== 'connected'
-                        ? 'Server offline'
-                        : inQueue && queue.mode !== 'ranked'
-                          ? 'Already in the unranked queue — cancel first'
-                          : inParty
-                            ? 'Ranked 1v1 is solo only — use 5v5 for parties'
-                            : 'Join ranked 1v1 (its own ladder & upgrades)'
-                    }
                     onClick={() => joinQueue(1, 'ranked')}
                   >
                     Ranked 1v1
@@ -240,19 +217,6 @@ export function Play(props: {
                     variant="primary"
                     size="lg"
                     disabled={status !== 'connected' || rankedTooBig || rankedNotReady || (inQueue && queue.mode !== 'ranked')}
-                    title={
-                      status !== 'connected'
-                        ? 'Server offline'
-                        : inQueue && queue.mode !== 'ranked'
-                          ? 'Already in the unranked queue — cancel first'
-                          : rankedTooBig
-                            ? 'Ranked 5v5 — parties of 6+ cannot queue ranked'
-                            : rankedNotReady
-                              ? `Waiting for ${unreadyNames} to ready up…`
-                              : inParty
-                                ? `Queue your whole party (${partySize}) for ranked 5v5 — empty slots fill with real players`
-                                : 'Join ranked 5v5 (its own ladder & upgrades)'
-                    }
                     onClick={() => joinQueue(5, 'ranked')}
                   >
                     Ranked 5v5
@@ -269,7 +233,7 @@ export function Play(props: {
                 — reach Level {RANKED_UNLOCK_LEVEL} to unlock ranked play and ranked stat upgrades. You are
                 Level {player.level}. Earn XP in practice & unranked — levels keep climbing forever.
               </ModeDesc>
-              <Button variant="primary" size="lg" disabled title={`Reach Level ${RANKED_UNLOCK_LEVEL} to unlock ranked`}>
+              <Button variant="primary" size="lg" disabled>
                 <I n="lock" /> Locked · Level {RANKED_UNLOCK_LEVEL} required
               </Button>
             </>

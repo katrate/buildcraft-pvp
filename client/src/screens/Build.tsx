@@ -400,7 +400,6 @@ export function Build(props: { onBack: () => void }) {
                     </div>
                     <Button
                       disabled={maxed || player.coins < cost}
-                      title={maxed ? `Capped by ${rank.name} (${rankedFormat}) — win ${rankedFormat} ranked matches to raise it` : `Costs ${cost} coins`}
                       onClick={() => upgradeRanked(row.stat, rankedFormat)}
                     >
                       {maxed ? 'Maxed' : <>+1 (<I n="coins" /> {cost})</>}

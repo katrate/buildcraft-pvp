@@ -264,7 +264,6 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
             <PotionButton
               key={p.id}
               disabled={!myTurn || !!disabled || !usable}
-              title={`${p.description} · FREE action — one per turn, before you act`}
               onClick={() => onAction({ type: 'USE_POTION', potionId: p.id })}
             >
               <AbName>
@@ -317,7 +316,6 @@ export function CombatArena({ state, myCombatantId, canAct, disabled, onAction, 
                   selected={pending?.type === 'USE_ABILITY' && pending.powerId === a.power.id}
                   disabled={!myTurn || !!disabled || !a.usable}
                   onClick={() => fireAbility(a.power)}
-                  title={a.power.description}
                 >
                   <AbName>{a.power.name}</AbName>
                   <AbMeta ready={!!(a.isUltimate && a.usable)}>{meta}</AbMeta>

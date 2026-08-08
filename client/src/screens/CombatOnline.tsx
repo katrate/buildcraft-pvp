@@ -61,7 +61,7 @@ export function CombatOnline(props: { matchInfo: OnlineMatchInfo; onExit: () => 
               )}
             </Chip>
             {(botsOnMyTeam > 0 || botsOnEnemyTeam > 0) && (
-              <Chip title="Teams are partially filled with bots to start the match">
+              <Chip>
                 <I n="robot" /> {botsOnMyTeam} bot{botsOnMyTeam === 1 ? '' : 's'} on your team{botsOnEnemyTeam > 0 ? ` · ${botsOnEnemyTeam} on theirs` : ''}
               </Chip>
             )}

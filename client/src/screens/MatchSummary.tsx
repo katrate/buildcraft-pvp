@@ -108,7 +108,7 @@ const Breakdown = styled.div`
 
 const ProgressGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   @media (max-width: 780px) { grid-template-columns: 1fr; }
 `;
@@ -130,17 +130,6 @@ const FillBar = styled.div<{ w: number; color: string }>`
   border-radius: 2px;
   transition: width 1.15s cubic-bezier(0.22, 1, 0.36, 1);
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
-`;
-
-const Marker = styled.div<{ left: number }>`
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.9);
-  left: ${(p) => p.left}%;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
-  z-index: 2;
 `;
 
 const BarLabel = styled.div`
@@ -204,7 +193,7 @@ const MvpBanner = styled.div<{ color: string }>`
 
 const LeaderGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
   @media (max-width: 880px) { grid-template-columns: 1fr; }
@@ -304,17 +293,15 @@ function useCountUp(target: number, dur = 900): number {
 }
 
 function AnimatedFill({ from, to, color, delay = 60 }: { from: number; to: number; color: string; delay?: number }): JSX.Element {
-  const [w, setW] = useState(0);
+  // The bar starts at the PRE-match progress and grows to the POST-match
+  // progress — so the fill and the % text always agree. (Level-ups / band
+  // changes pass from=0 so the bar simply fills the new bar.)
+  const [w, setW] = useState(from);
   useEffect(() => {
     const id = setTimeout(() => setW(to), delay);
     return () => clearTimeout(id);
   }, [to, delay]);
-  return (
-    <>
-      <Marker left={from} />
-      <FillBar w={w} color={color} />
-    </>
-  );
+  return <FillBar w={w} color={color} />;
 }
 
 const RESULT_TONE: Record<PlayerResult, string> = {
@@ -355,10 +342,12 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
   const teams = [0, 1].map((teamId) => stats.filter((s) => s.teamId === teamId).sort((a, b) => b.score - a.score));
   const teamMvp = teams.map((t) => (t.length ? t[0] : null));
 
-  // XP progress (animated bar): marker at the pre-match position, fill grows.
+  // XP progress (animated bar): fill grows from the pre-match position to the
+  // post-match position — the bar and the % text below it always agree. When
+  // the player leveled up the old bar was full, so start from 0 on the new bar.
   const leveledUp = player.level > props.levelFrom;
   const xpTo = progressToNextLevel(player.level, player.xp);
-  const xpFrom = Math.min(1, props.levelFrom === player.level ? progressToNextLevel(props.levelFrom, props.xpFrom) : 1);
+  const xpFrom = props.levelFrom === player.level ? progressToNextLevel(props.levelFrom, props.xpFrom) : 0;
 
   // Rank progress (ranked only).
   const rankRating =
@@ -368,7 +357,14 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
   const rankBand = props.rankFormat && rankRating > 0 ? bandForRating(rankRating) : null;
   const ratingTo = rankRating;
   const rpTo = props.rankFormat ? progressInBand(ratingTo) : 0;
-  const rpFrom = props.ratingFrom !== undefined ? progressInBand(props.ratingFrom) : 0;
+  // If the match promoted/demoted the player into a different band, the old
+  // band's progress is meaningless — start the new band from 0.
+  const rpFrom =
+    !props.rankFormat || props.ratingFrom === undefined || !rankBand
+      ? 0
+      : bandForRating(props.ratingFrom).id === rankBand.id
+        ? progressInBand(props.ratingFrom)
+        : 0;
 
   const myStats = stats.find((s) => s.playerId === player.playerId);
 
@@ -418,7 +414,7 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
           </Track>
           <BarLabel style={{ fontSize: '0.66rem', color: 'var(--text-dim)' }}>
             <span>{player.xp} / {xpToNextLevel(player.level)} XP</span>
-            <span>Lv {player.level + 1}</span>
+            <span>{Math.round(xpTo * 100)}% · Lv {player.level + 1}</span>
           </BarLabel>
         </Panel>
 
@@ -435,7 +431,7 @@ export function MatchSummary(props: MatchSummaryData & { onExit: () => void; onR
             </Track>
             <BarLabel style={{ fontSize: '0.66rem', color: 'var(--text-dim)' }}>
               <span>{ratingTo} RP</span>
-              <span>{ratingToNextBand(ratingTo) === null ? 'MAX RANK' : 'NEXT RANK'}</span>
+              <span>{Math.round(rpTo * 100)}% · {ratingToNextBand(ratingTo) === null ? 'MAX RANK' : 'NEXT RANK'}</span>
             </BarLabel>
           </Panel>
         )}
