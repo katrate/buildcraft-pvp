@@ -48,7 +48,7 @@ export function CombatCard(props: {
         <span>{dead ? <I n="close" /> : c.isBot ? '' : c.name[0]}</span>
       </Shape>
       <CbName>{c.name}</CbName>
-      <StatBar value={c.hp} max={c.maxHp} color={hpColor} height={6} />
+      <StatBar label="HP" value={c.hp} max={c.maxHp} color={hpColor} height={6} />
       <CbEffects>
         {c.effects.map((e) => (
           <FxBadge
