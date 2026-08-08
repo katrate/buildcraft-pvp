@@ -7,16 +7,17 @@ import { Inventory } from './screens/Inventory';
 import { Store } from './screens/Store';
 import { Profile } from './screens/Profile';
 import { CombatPractice } from './screens/CombatPractice';
-import { CombatOnline, type OnlineEndInfo, type OnlineMatchInfo } from './screens/CombatOnline';
+import { CombatOnline, type OnlineMatchInfo } from './screens/CombatOnline';
+import { MatchSummary, type MatchSummaryData } from './screens/MatchSummary';
 import { CountdownScreen } from './screens/Countdown';
-import { usePlayer, grantRewards, recordMatch, applyRankDelta } from './state/store';
+import { usePlayer, getState, grantRewards, recordMatch, applyRankDelta } from './state/store';
 import { useAuth } from './state/auth';
 import { useQueue, getQueue, setQueue, clearQueue, leaveQueue } from './state/queue';
 import { connectSocket, subscribeMessages, useWsStatus } from './services/ws';
 import { AppShell, Brand, Button, Chip, MenuScreen, Muted, Panel, QueueFloater, Spinner, Stats, Tiny, Toast, TopBar } from './ui/glass';
 import { I } from './ui/icons';
 
-type AppScreen = Screen | 'countdown';
+type AppScreen = Screen | 'countdown' | 'summary';
 
 type CountdownMode = 'unranked' | 'ranked' | 'custom';
 
@@ -34,7 +35,7 @@ export function App() {
   const auth = useAuth();
   const [screen, setScreen] = useState<AppScreen>('menu');
   const [onlineMatch, setOnlineMatch] = useState<OnlineMatchInfo | null>(null);
-  const [endInfo, setEndInfo] = useState<OnlineEndInfo | null>(null);
+  const [summary, setSummary] = useState<MatchSummaryData | null>(null);
   const [countdown, setCountdown] = useState<MatchCountdown | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const queue = useQueue();
@@ -51,7 +52,7 @@ export function App() {
   useEffect(() => {
     setScreen('menu');
     setOnlineMatch(null);
-    setEndInfo(null);
+    setSummary(null);
     setCountdown(null);
   }, [player.playerId]);
 
@@ -114,27 +115,37 @@ export function App() {
         case 'match_start':
           setCountdown(null);
           setOnlineMatch({ match: msg.match, yourCombatantIds: msg.yourCombatantIds, yourTeam: msg.yourTeam });
-          setEndInfo(null);
+          setSummary(null);
           setScreen('combat-online');
           break;
         case 'match_state':
           setOnlineMatch((prev) => (prev ? { ...prev, match: msg.match } : prev));
           break;
         case 'match_end': {
-          const leveled = grantRewards(msg.rewards);
+          // Snapshot pre-grant progress so the stats screen can animate the
+          // XP / RP bars from the old position to the new one.
+          const before = getState();
+          const format = msg.teamSize === 1 ? '1v1' : '5v5';
+          const ratingFrom = before.ranks[format].rating;
+          grantRewards(msg.rewards);
           // Ranked ladders are per-format: a 1v1 match updates the 1v1 rank,
           // a 5v5 match updates the 5v5 rank.
-          if (msg.rankDelta !== undefined) {
-            applyRankDelta(msg.rankDelta, msg.teamSize === 1 ? '1v1' : '5v5');
-          }
-          setEndInfo({
+          if (msg.rankDelta !== undefined) applyRankDelta(msg.rankDelta, format);
+          setSummary({
             result: msg.result,
-            rewards: msg.rewards,
             winnerTeam: msg.winnerTeam,
-            leveledUp: leveled.leveledUp,
+            myTeam: msg.yourTeam,
+            mode: msg.mode,
+            rewards: msg.rewards,
             rankDelta: msg.rankDelta,
+            rankFormat: msg.rankDelta !== undefined ? format : undefined,
+            stats: msg.stats,
+            levelFrom: before.level,
+            xpFrom: before.xp,
+            ratingFrom: msg.rankDelta !== undefined ? ratingFrom : undefined,
           });
           recordMatch(msg.result);
+          setScreen('summary');
           break;
         }
         case 'error':
@@ -148,7 +159,7 @@ export function App() {
     setScreen(s);
     if (s !== 'combat-online') {
       // keep the last match around so re-entry via rejoin works, but clear results
-      setEndInfo(null);
+      setSummary(null);
     }
   }, []);
 
@@ -158,9 +169,16 @@ export function App() {
 
   const exitOnline = useCallback(() => {
     setOnlineMatch(null);
-    setEndInfo(null);
+    setSummary(null);
     setCountdown(null);
     navigate('play');
+  }, [navigate]);
+
+  const exitToMenu = useCallback(() => {
+    setOnlineMatch(null);
+    setSummary(null);
+    setCountdown(null);
+    navigate('menu');
   }, [navigate]);
 
   // ------------------------------------------------------------
@@ -203,7 +221,7 @@ export function App() {
 
   return (
     <AppShell>
-      {screen !== 'menu' && screen !== 'combat-practice' && screen !== 'combat-online' && screen !== 'countdown' && (
+      {screen !== 'menu' && screen !== 'combat-practice' && screen !== 'combat-online' && screen !== 'countdown' && screen !== 'summary' && (
         <TopBar>
           <Brand onClick={() => navigate('menu')}>BuildCraft PVP</Brand>
           <Stats>
@@ -234,13 +252,14 @@ export function App() {
         />
       )}
       {screen === 'combat-online' && onlineMatch && (
-        <CombatOnline matchInfo={onlineMatch} endInfo={endInfo} onExit={exitOnline} />
+        <CombatOnline matchInfo={onlineMatch} onExit={exitOnline} />
       )}
       {screen === 'combat-online' && !onlineMatch && (
         <MenuScreen>
           <Muted>Waiting for match…</Muted>
         </MenuScreen>
       )}
+      {screen === 'summary' && summary && <MatchSummary {...summary} onExit={exitToMenu} />}
 
       {/* Floating matchmaking timer — visible on top of every screen while queued */}
       {queue && (

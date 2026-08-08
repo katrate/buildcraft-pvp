@@ -8,6 +8,7 @@ import {
 import {
   applyAction,
   chooseBotAction,
+  collectCombatStats,
   computePvpBuild,
   createMatch,
   getCombatant,
@@ -388,6 +389,7 @@ export class MatchManager {
     for (const [, dt] of m.disconnectTimers) clearTimeout(dt);
 
     const survived = roundsSurvived(m.state);
+    const stats = collectCombatStats(m.state);
     const participants: MatchRecordParticipant[] = [];
 
     // Ranked rating deltas (ELO): each team is treated as one rating (its
@@ -424,8 +426,11 @@ export class MatchManager {
         winnerTeam: m.state.winnerTeam ?? -1,
         result,
         rewards,
+        mode: m.state.mode,
+        yourTeam: player.teamId,
         teamSize: m.teamSize,
         rankDelta,
+        stats,
       });
       participants.push({
         playerId: player.playerId,

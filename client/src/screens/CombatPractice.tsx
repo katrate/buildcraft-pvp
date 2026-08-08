@@ -1,20 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { usePlayer, grantRewards } from '../state/store';
+import { usePlayer, getState, grantRewards } from '../state/store';
 import { CombatArena } from '../components/CombatArena';
+import { MatchSummary, type MatchSummaryData } from './MatchSummary';
 import { createPracticeMatch, playerCombatantInput } from '../../../shared/src/engine/practice';
-import { applyAction, getCurrentCombatant, isMyTurn, roundsSurvived } from '../../../shared/src/engine/combat';
+import {
+  applyAction,
+  collectCombatStats,
+  getCurrentCombatant,
+  isMyTurn,
+  roundsSurvived,
+} from '../../../shared/src/engine/combat';
 import { chooseBotAction } from '../../../shared/src/engine/ai';
 import { computeRewards } from '../../../shared/src/rewards';
 import { BOT_THINK_MS } from '../../../shared/src/constants';
-import type { MatchRewards, MatchState } from '../../../shared/src/types';
-import { Button, Chip, FlexFill, Muted, Overlay, OverlayCard, Row } from '../ui/glass';
+import type { MatchState } from '../../../shared/src/types';
+import { Button, Chip, FlexFill, Muted, Row } from '../ui/glass';
 import { I } from '../ui/icons';
 
 export function CombatPractice(props: { onExit: () => void }) {
   const player = usePlayer();
   const [nonce, setNonce] = useState(0);
   const [state, setState] = useState<MatchState | null>(null);
-  const [result, setResult] = useState<MatchRewards | null>(null);
+  const [summaryData, setSummaryData] = useState<MatchSummaryData | null>(null);
   const appliedRef = useRef(false);
 
   const myCombatantId = useMemo(() => `p_${player.playerId}`, [player.playerId]);
@@ -30,7 +37,7 @@ export function CombatPractice(props: { onExit: () => void }) {
       }),
     );
     appliedRef.current = false;
-    setResult(null);
+    setSummaryData(null);
     setState(match);
   }, [nonce]);
 
@@ -51,7 +58,7 @@ export function CombatPractice(props: { onExit: () => void }) {
     return () => clearTimeout(timer);
   }, [state]);
 
-  // Apply rewards once when the match ends
+  // Apply rewards once when the match ends, then hand off to the stats screen.
   useEffect(() => {
     if (!state || state.phase !== 'MATCH_END' || appliedRef.current) return;
     appliedRef.current = true;
@@ -60,11 +67,36 @@ export function CombatPractice(props: { onExit: () => void }) {
       roundsSurvived: roundsSurvived(state),
       kills: myCombatant?.kills ?? 0,
     });
+    // Snapshot the pre-reward progress for the animated XP bar, then apply.
+    const before = getState();
     // Practice is a solo sandbox — it pays coins/XP but does NOT touch the
     // PvP win/loss record (an NPC farm must never inflate your profile).
     grantRewards(rewards);
-    setResult(rewards);
+    setSummaryData({
+      result: rewards.result,
+      winnerTeam: state.winnerTeam ?? -1,
+      myTeam: 0,
+      mode: 'practice',
+      rewards,
+      stats: collectCombatStats(state),
+      levelFrom: before.level,
+      xpFrom: before.xp,
+    });
   }, [state, myCombatantId]);
+
+  if (summaryData) {
+    return (
+      <MatchSummary
+        {...summaryData}
+        onExit={props.onExit}
+        onRematch={() => {
+          setSummaryData(null);
+          setState(null); // show "Preparing the arena…" until the new match is built
+          setNonce((n) => n + 1);
+        }}
+      />
+    );
+  }
 
   if (!state) {
     return (
@@ -95,26 +127,6 @@ export function CombatPractice(props: { onExit: () => void }) {
           </Row>
         }
       />
-
-      {result && (
-        <Overlay>
-          <OverlayCard>
-            <h2 style={{ color: result.result === 'victory' ? 'var(--good)' : result.result === 'draw' ? 'var(--warn)' : 'var(--bad)' }}>
-              {result.result === 'victory' ? 'VICTORY!' : result.result === 'draw' ? 'DRAW' : 'DEFEAT'}
-            </h2>
-            <Row center gap={16}>
-              <Chip tone="good">+{result.xp} XP</Chip>
-              <Chip tone="warn">+{result.coins} coins</Chip>
-            </Row>
-            <Button variant="primary" size="lg" onClick={() => setNonce((n) => n + 1)}>
-              Fight Again
-            </Button>
-            <Button variant="ghost" onClick={props.onExit}>
-              Back to Menu
-            </Button>
-          </OverlayCard>
-        </Overlay>
-      )}
     </FlexFill>
   );
 }

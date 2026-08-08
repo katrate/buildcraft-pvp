@@ -9,6 +9,7 @@ import { EFFECT_META } from '../game-data/effects';
 import type {
   CombatBuild,
   Combatant,
+  CombatStats,
   LogEntry,
   MatchMode,
   MatchState,
@@ -71,6 +72,14 @@ export function makeCombatant(input: CombatantInput): Combatant {
     initiative: s.initiative,
     alive: true,
     kills: 0,
+    deaths: 0,
+    assists: 0,
+    damageDealt: 0,
+    damageTaken: 0,
+    healingDone: 0,
+    potionsUsed: 0,
+    ultimatesUsed: 0,
+    damageByTarget: {},
     usesLeft,
     potionsLeft,
     potionUsedThisTurn: false,
@@ -158,11 +167,24 @@ function creditKill(state: MatchState, killerId: string): void {
   }
 }
 
+// Teammates who contributed damage to the fallen combatant get an assist
+// (the killer is excluded — they already have the kill credit).
+function creditAssists(state: MatchState, victim: Combatant, killerId: string): void {
+  for (const c of Object.values(state.combatants)) {
+    if (c.id === killerId || c.id === victim.id || c.teamId === victim.teamId) continue;
+    if ((c.damageByTarget[victim.id] ?? 0) > 0) c.assists += 1;
+  }
+}
+
 function markDead(state: MatchState, c: Combatant, killerId?: string): void {
   if (!c.alive) return;
   c.alive = false;
+  c.deaths += 1;
   log(state, `${c.name} is eliminated!`);
-  if (killerId && killerId !== c.id) creditKill(state, killerId);
+  if (killerId && killerId !== c.id) {
+    creditKill(state, killerId);
+    creditAssists(state, c, killerId);
+  }
 }
 
 function dealDamageTo(state: MatchState, target: Combatant, attacker: Combatant, dmg: number, source: string): number {
@@ -178,6 +200,10 @@ function dealDamageTo(state: MatchState, target: Combatant, attacker: Combatant,
   target.effects = target.effects.filter((e) => e.kind !== 'shield' || e.amount > 0);
   const dealt = remaining;
   target.hp = Math.max(0, target.hp - dealt);
+  // Post-match stat tracking (damage dealt / taken + kill-assist feed).
+  attacker.damageDealt += dealt;
+  target.damageTaken += dealt;
+  attacker.damageByTarget[target.id] = (attacker.damageByTarget[target.id] ?? 0) + dealt;
   if (dealt < dmg) log(state, `${source} broke through ${target.name}'s shield (${dmg - dealt} absorbed).`);
   log(state, `${target.name} takes ${dealt} damage (${source}).`);
   // Lethal blow
@@ -337,9 +363,22 @@ function beginTurn(state: MatchState): MatchState {
       continue;
     }
     const dot = tickDoTs(c);
-    if (dot > 0) log(state, `${c.name} takes ${dot} damage over time.`);
+    if (dot > 0) {
+      log(state, `${c.name} takes ${dot} damage over time.`);
+      // DoT damage is credited to its source for the post-match leaderboard.
+      c.damageTaken += dot;
+      const dotSource = c.effects.find((e) => EFFECT_META[e.kind].damageOverTime)?.sourceId;
+      const src = dotSource ? state.combatants[dotSource] : undefined;
+      if (src) {
+        src.damageDealt += dot;
+        src.damageByTarget[c.id] = (src.damageByTarget[c.id] ?? 0) + dot;
+      }
+    }
     const regen = tickRegen(c);
-    if (regen > 0) log(state, `${c.name} regenerates ${regen} HP.`);
+    if (regen > 0) {
+      log(state, `${c.name} regenerates ${regen} HP.`);
+      c.healingDone += regen;
+    }
     if (c.hp <= 0) {
       // DoT kill — credit the DoT source (first one that dealt it).
       const source = c.effects.find((e) => EFFECT_META[e.kind].damageOverTime)?.sourceId;
@@ -438,6 +477,7 @@ function useAbility(state: MatchState, actor: Combatant, powerId: string, target
   if (power.powerKind === 'ultimate') {
     if (!actor.ultimate || actor.ultimate.charge < ULTIMATE_CHARGE_MAX) return false;
     actor.ultimate.charge = 0;
+    actor.ultimatesUsed += 1;
   } else {
     const usesLeft = actor.usesLeft[powerId] ?? 0;
     if (usesLeft <= 0) return false;
@@ -455,6 +495,7 @@ function useAbility(state: MatchState, actor: Combatant, powerId: string, target
     if (power.healAmount) {
       const heal = Math.min(t.maxHp - t.hp, power.healAmount);
       t.hp += heal;
+      actor.healingDone += heal;
       log(state, `${t.name} recovers ${heal} HP.`);
     }
     if (power.effects) {
@@ -480,6 +521,7 @@ function useAbility(state: MatchState, actor: Combatant, powerId: string, target
   if (power.lifesteal && dmgDealt > 0) {
     const drain = Math.round(dmgDealt * power.lifesteal);
     actor.hp = Math.min(actor.maxHp, actor.hp + drain);
+    actor.healingDone += drain;
     log(state, `${actor.name} drains ${drain} HP.`);
   }
   return true;
@@ -496,10 +538,12 @@ function usePotion(state: MatchState, actor: Combatant, potionId: string): boole
   if (left <= 0) return false;
   actor.potionsLeft[potionId] = left - 1;
   actor.potionUsedThisTurn = true;
+  actor.potionsUsed += 1;
 
   if (potion.healAmount) {
     const heal = Math.min(actor.maxHp - actor.hp, potion.healAmount);
     actor.hp += heal;
+    actor.healingDone += heal;
     log(state, `${actor.name} drinks ${potion.name} — recovers ${heal} HP.`);
   }
   if (potion.effects) {
@@ -639,4 +683,45 @@ export function seededId(id: string): number {
   return h;
 }
 
-export type { LogEntry, MatchState };
+// ------------------------------------------------------------
+// Post-match leaderboard & MVP
+// ------------------------------------------------------------
+
+// Rough contribution score for the post-match MVP ranking. Rewards damage
+// and healing output plus kills/assists; deaths subtract. Display math only.
+export function combatScore(c: Combatant): number {
+  return c.kills * 100 + c.assists * 35 + c.damageDealt + Math.round(c.healingDone * 0.7) - c.deaths * 25;
+}
+
+// Final per-combatant summary — attached to match_end so both teams see the
+// full leaderboard (server-authoritative; practice derives it client-side).
+export function collectCombatStats(state: MatchState): CombatStats[] {
+  return Object.values(state.combatants).map((c) => ({
+    combatantId: c.id,
+    playerId: c.playerId,
+    name: c.name,
+    teamId: c.teamId,
+    isBot: c.isBot,
+    alive: c.alive,
+    kills: c.kills,
+    deaths: c.deaths,
+    assists: c.assists,
+    damageDealt: c.damageDealt,
+    damageTaken: c.damageTaken,
+    healingDone: c.healingDone,
+    potionsUsed: c.potionsUsed,
+    ultimatesUsed: c.ultimatesUsed,
+    score: combatScore(c),
+  }));
+}
+
+// Best performer overall — the game MVP (ties broken by the first winner).
+export function findMvp(stats: CombatStats[]): CombatStats | null {
+  let best: CombatStats | null = null;
+  for (const s of stats) {
+    if (!best || s.score > best.score) best = s;
+  }
+  return best;
+}
+
+export type { LogEntry, MatchState, CombatStats };

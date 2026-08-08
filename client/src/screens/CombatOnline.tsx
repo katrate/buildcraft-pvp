@@ -2,8 +2,8 @@ import { usePlayer } from '../state/store';
 import { sendMessage, useWsStatus, connectSocket } from '../services/ws';
 import { CombatArena } from '../components/CombatArena';
 import { getCurrentCombatant, isMyTurn } from '../../../shared/src/engine/combat';
-import type { MatchRewards, MatchState, PlayerResult } from '../../../shared/src/types';
-import { Button, Chip, FlexFill, MutedBlock, Overlay, OverlayCard, Row, Tiny } from '../ui/glass';
+import type { MatchState } from '../../../shared/src/types';
+import { Button, Chip, FlexFill, Row, Tiny } from '../ui/glass';
 import { I } from '../ui/icons';
 
 export interface OnlineMatchInfo {
@@ -12,22 +12,10 @@ export interface OnlineMatchInfo {
   yourTeam: number;
 }
 
-export interface OnlineEndInfo {
-  result: PlayerResult;
-  rewards: MatchRewards;
-  winnerTeam: number;
-  leveledUp: boolean;
-  rankDelta?: number;
-}
-
-export function CombatOnline(props: {
-  matchInfo: OnlineMatchInfo;
-  endInfo: OnlineEndInfo | null;
-  onExit: () => void;
-}) {
+export function CombatOnline(props: { matchInfo: OnlineMatchInfo; onExit: () => void }) {
   const player = usePlayer();
   const status = useWsStatus();
-  const { matchInfo, endInfo } = props;
+  const { matchInfo } = props;
 
   const myCombatantId = matchInfo.yourCombatantIds[0] ?? '';
   const myTurn = isMyTurn(matchInfo.match, myCombatantId);
@@ -93,61 +81,6 @@ export function CombatOnline(props: {
           ) : null
         }
       />
-
-      {endInfo && (
-        <Overlay>
-          <OverlayCard>
-            <h2
-              style={{
-                color: endInfo.result === 'victory' ? 'var(--good)' : endInfo.result === 'draw' ? 'var(--warn)' : 'var(--bad)',
-              }}
-            >
-              {endInfo.result === 'victory' ? 'VICTORY!' : endInfo.result === 'draw' ? 'DRAW' : 'DEFEAT'}
-            </h2>
-            <Row center gap={16}>
-              <Chip tone="good">+{endInfo.rewards.xp} XP</Chip>
-              <Chip tone="warn">+{endInfo.rewards.coins} coins</Chip>
-              {endInfo.rankDelta !== undefined && endInfo.rankDelta !== 0 && (
-                <Chip tone={endInfo.rankDelta > 0 ? 'good' : 'offline'}>
-                  {endInfo.rankDelta > 0 ? '▲' : '▼'} {Math.abs(endInfo.rankDelta)} RP
-                </Chip>
-              )}
-            </Row>
-            {endInfo.rewards.breakdown && (
-              <MutedBlock>
-                <div>
-                  Coins: {endInfo.rewards.breakdown.baseCoins} base +{' '}
-                  {endInfo.rewards.breakdown.killCoins} kills + {endInfo.rewards.breakdown.roundCoins} rounds =
-                  +{endInfo.rewards.coins}
-                </div>
-                <div>
-                  XP: {endInfo.rewards.breakdown.baseXp} base + {endInfo.rewards.breakdown.killXp} kills +{' '}
-                  {endInfo.rewards.breakdown.roundXp} rounds = +{endInfo.rewards.xp}
-                </div>
-                {endInfo.rankDelta !== undefined && (
-                  <div>
-                    RP: {endInfo.rankDelta > 0 ? `+${endInfo.rankDelta}` : endInfo.rankDelta} (ELO — depends on
-                    your and your opponent's rating)
-                  </div>
-                )}
-              </MutedBlock>
-            )}
-            {endInfo.leveledUp && (
-              <Chip tone="warn">
-                <I n="partyPopper" /> Level up!
-              </Chip>
-            )}
-            <Tiny>
-              {matchInfo.match.mode === 'ranked'
-                ? 'Ranked rewards are server-computed; RP updates with each result.'
-                : 'Unranked rewards come from the server — your build, not your grind, decides the fight.'}
-            </Tiny>
-            <Button variant="primary" size="lg" onClick={props.onExit}>
-              Back to Menu
-            </Button>
-          </OverlayCard>
-        </Overlay>
-      )}
     </FlexFill>
   );
 }

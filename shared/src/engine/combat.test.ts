@@ -4,9 +4,11 @@ import { MAX_ROUNDS, ULTIMATE_CHARGE_MAX } from '../constants';
 import { chooseBotAction } from './ai';
 import {
   applyAction,
+  collectCombatStats,
   computeDamage,
   computeTurnOrder,
   createMatch,
+  findMvp,
   getTurnActions,
   isMyTurn,
 } from './combat';
@@ -452,5 +454,73 @@ describe('bot AI', () => {
     const action = chooseBotAction(s, 'p1');
     expect(action.type).toBe('USE_ABILITY');
     if (action.type === 'USE_ABILITY') expect(action.powerId).toBe('shield');
+  });
+});
+
+describe('post-match stats (leaderboard & MVP)', () => {
+  function mk2v2(): MatchState {
+    const mk = (id: string, name: string, playerId: string | null) => ({
+      id,
+      name,
+      playerId,
+      isBot: playerId === null,
+      build: computeStats(mkPreset({ active1: 'fire_bolt', weapon: 'iron_sword' })),
+    });
+    return createMatch({
+      id: 'm2',
+      mode: 'unranked',
+      teams: [
+        { teamId: 0, combatants: [mk('a1', 'Alpha', 'u1'), mk('a2', 'Bravo', 'u2')] },
+        { teamId: 1, combatants: [mk('b1', 'Echo', 'u3'), mk('b2', 'Foxtrot', 'u4')] },
+      ],
+    });
+  }
+
+  it('tracks kills, deaths, assists, damage and healing', () => {
+    const s = mk2v2();
+    // a1 and a2 both chip b1 (a2 becomes an assist on the kill), then a1 lands
+    // the killing blow at the start of round 2.
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a1
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a2
+    s.combatants.b1.hp = 5;
+    applyAction(s, { type: 'END_TURN' }); // b1
+    applyAction(s, { type: 'END_TURN' }); // b2
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a1 round 2 — lethal
+
+    const a1 = s.combatants.a1;
+    const a2 = s.combatants.a2;
+    const b1 = s.combatants.b1;
+    expect(b1.alive).toBe(false);
+    expect(b1.deaths).toBe(1);
+    expect(a1.kills).toBe(1);
+    expect(a2.assists).toBe(1); // damaged the victim, didn't land the kill
+    expect(a1.damageDealt).toBeGreaterThan(0);
+    expect(a2.damageDealt).toBeGreaterThan(0);
+    expect(b1.damageTaken).toBe(a1.damageDealt + a2.damageDealt);
+  });
+
+  it('collectCombatStats + findMvp pick the highest performer', () => {
+    const s = mk2v2();
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a1
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a2
+    s.combatants.b1.hp = 5;
+    applyAction(s, { type: 'END_TURN' }); // b1
+    applyAction(s, { type: 'END_TURN' }); // b2
+    applyAction(s, { type: 'USE_ABILITY', powerId: 'fire_bolt', targetId: 'b1' }); // a1 round 2 — kill
+
+    const stats = collectCombatStats(s);
+    expect(stats).toHaveLength(4);
+    const mvp = findMvp(stats);
+    expect(mvp).not.toBeNull();
+    expect(mvp?.combatantId).toBe('a1'); // kill + two direct hits beats a2's assist
+    expect(mvp?.kills).toBe(1);
+    // every row carries the full leaderboard fields
+    for (const row of stats) {
+      expect(typeof row.deaths).toBe('number');
+      expect(typeof row.damageDealt).toBe('number');
+      expect(typeof row.damageTaken).toBe('number');
+      expect(typeof row.healingDone).toBe('number');
+      expect(typeof row.score).toBe('number');
+    }
   });
 });

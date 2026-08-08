@@ -23,6 +23,7 @@ import cart from '@iconify-icons/mdi/cart';
 import check from '@iconify-icons/mdi/check';
 import chiliMild from '@iconify-icons/mdi/chili-mild';
 import close from '@iconify-icons/mdi/close';
+import crown from '@iconify-icons/mdi/crown';
 import cog from '@iconify-icons/mdi/cog';
 import coins from '@iconify-icons/mdi/coins';
 import cubeOutline from '@iconify-icons/mdi/cube-outline';
@@ -83,6 +84,7 @@ export const ICONS = {
   chiliMild,
   close,
   cog,
+  crown,
   coins,
   cubeOutline,
   emoticonAngry,

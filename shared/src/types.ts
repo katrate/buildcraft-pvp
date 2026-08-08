@@ -178,12 +178,46 @@ export interface Combatant {
   initiative: number;
   alive: boolean;
   kills: number;
+  deaths: number;
+  assists: number;
+  damageDealt: number;
+  damageTaken: number;
+  healingDone: number;
+  potionsUsed: number;
+  ultimatesUsed: number;
+  /** damage each combatant dealt to each target id — feeds kill assists */
+  damageByTarget: Record<string, number>;
   usesLeft: Record<string, number>; // powerId -> uses remaining this match
   potionsLeft: Record<string, number>; // potionId -> uses remaining this match
   potionUsedThisTurn: boolean; // max 1 free potion per turn, before acting
   effects: StatusInstance[];
   ultimate: { id: string; charge: number } | null;
   build: CombatBuild | null; // snapshot for UI (powers list)
+}
+
+// ------------------------------------------------------------
+// Post-match combat summary
+// ------------------------------------------------------------
+
+// One row of the post-match stats screen. Sent with `match_end` so BOTH
+// teams can see every combatant's final performance — KDA, damage dealt /
+// taken, healing, potions & ultimates used, and the MVP ranking score.
+export interface CombatStats {
+  combatantId: string;
+  playerId: string | null; // null for bots
+  name: string;
+  teamId: number;
+  isBot: boolean;
+  alive: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+  damageDealt: number;
+  damageTaken: number;
+  healingDone: number;
+  potionsUsed: number;
+  ultimatesUsed: number;
+  score: number; // MVP ranking score (see engine/combat.ts combatScore)
 }
 
 export interface LogEntry {
@@ -372,8 +406,11 @@ export type ServerMessage =
       winnerTeam: number;
       rewards: MatchRewards;
       result: PlayerResult;
+      mode: MatchMode;
+      yourTeam: number; // the receiving player's team — drives the stats screen layout
       teamSize: 1 | 2 | 5; // which format the match was (drives which ladder a ranked delta lands on)
       rankDelta?: number; // ranked only: +1 win / -1 loss / 0 draw
+      stats: CombatStats[]; // full post-match leaderboard (both teams)
     }
   | { type: 'error'; message: string }
   // party & presence

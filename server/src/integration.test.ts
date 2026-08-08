@@ -207,6 +207,24 @@ describe('multiplayer integration', () => {
     expect(endA).toBeDefined();
     expect(endB).toBeDefined();
 
+    // The post-match stats screen depends on the server shipping the full
+    // leaderboard with every match_end.
+    expect(endA!.stats).toHaveLength(2);
+    expect(endB!.stats).toHaveLength(2);
+    expect(endA!.mode).toBe('unranked');
+    // yourTeam points at the row belonging to the receiving player — match
+    // the row by alice's own combatant id (team assignment is random).
+    const aliceRow = endA!.stats.find((s) => s.combatantId === `p_${alice.playerId}`)!;
+    expect(aliceRow).toBeDefined();
+    expect(endA!.yourTeam).toBe(aliceRow.teamId);
+    for (const row of endA!.stats) {
+      expect(row).toHaveProperty('kills');
+      expect(row).toHaveProperty('deaths');
+      expect(row).toHaveProperty('assists');
+      expect(row).toHaveProperty('damageDealt');
+      expect(row).toHaveProperty('score');
+    }
+
     if (endA!.result === 'draw') {
       expect(endB!.result).toBe('draw');
     } else {
